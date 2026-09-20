@@ -28,7 +28,9 @@ export const stores = mysqlTable("oneira_stores", {
   managerName: varchar("managerName", { length: 80 }).notNull(),
   loginPin: varchar("loginPin", { length: 12 }).default("1688").notNull(),
   monthlyTargetWan: double("monthlyTargetWan").default(0).notNull(),
-  status: mysqlEnum("status", ["正常运营", "筹备中", "装修中"]).default("正常运营").notNull(),
+  status: mysqlEnum("status", ["正常运营", "筹备中", "装修中"])
+    .default("正常运营")
+    .notNull(),
   openingDate: varchar("openingDate", { length: 10 }),
   attachmentUrl: text("attachmentUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -41,7 +43,9 @@ export const dailyReports = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     storeName: varchar("storeName", { length: 120 }).notNull(),
     reportDate: varchar("reportDate", { length: 10 }).notNull(),
-    weather: mysqlEnum("weather", ["晴", "阴", "雨", "雪"]).default("晴").notNull(),
+    weather: mysqlEnum("weather", ["晴", "阴", "雨", "雪"])
+      .default("晴")
+      .notNull(),
     avgTicket: double("avgTicket").default(0).notNull(),
     revenue: double("revenue").default(0).notNull(),
     traffic: double("traffic").default(0).notNull(),
@@ -53,7 +57,9 @@ export const dailyReports = mysqlTable(
     storedAmount: double("storedAmount").default(0).notNull(),
     praiseCount: double("praiseCount").default(0).notNull(),
     issue: text("issue"),
-    issueStatus: mysqlEnum("issueStatus", ["待处理", "处理中", "已解决"]).default("待处理").notNull(),
+    issueStatus: mysqlEnum("issueStatus", ["待处理", "处理中", "已解决"])
+      .default("待处理")
+      .notNull(),
     solver: varchar("solver", { length: 80 }),
     solution: text("solution"),
     deadline: varchar("deadline", { length: 10 }),
@@ -64,9 +70,12 @@ export const dailyReports = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  (table) => ({
-    storeDateUnique: uniqueIndex("oneira_store_date_unique").on(table.storeName, table.reportDate),
-  }),
+  table => ({
+    storeDateUnique: uniqueIndex("oneira_store_date_unique").on(
+      table.storeName,
+      table.reportDate
+    ),
+  })
 );
 
 export const appSettings = mysqlTable("oneira_app_settings", {
@@ -81,7 +90,9 @@ export const openingNodes = mysqlTable("oneira_opening_nodes", {
   storeName: varchar("storeName", { length: 120 }).notNull(),
   nodeName: varchar("nodeName", { length: 160 }).notNull(),
   planDate: varchar("planDate", { length: 10 }).notNull(),
-  status: mysqlEnum("status", ["未开始", "进行中", "已完成"]).default("未开始").notNull(),
+  status: mysqlEnum("status", ["未开始", "进行中", "已完成"])
+    .default("未开始")
+    .notNull(),
   owner: varchar("owner", { length: 80 }).notNull(),
   completed: boolean("completed").default(false).notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -101,9 +112,12 @@ export const monthlyTargets = mysqlTable(
     week5: double("week5").default(0).notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  (table) => ({
-    storeMonthUnique: uniqueIndex("oneira_target_store_month_unique").on(table.storeName, table.month),
-  }),
+  table => ({
+    storeMonthUnique: uniqueIndex("oneira_target_store_month_unique").on(
+      table.storeName,
+      table.month
+    ),
+  })
 );
 
 export const productRanks = mysqlTable("oneira_product_ranks", {
@@ -122,14 +136,18 @@ export const operationSummaries = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     storeName: varchar("storeName", { length: 120 }).notNull(),
     period: varchar("period", { length: 20 }).notNull(),
-    type: mysqlEnum("type", ["周报", "月报"]).notNull(),
+    type: mysqlEnum("type", ["日报", "周报", "月报"]).notNull(),
     summary: text("summary").notNull(),
     plan: text("plan").notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  (table) => ({
-    summaryUnique: uniqueIndex("oneira_summary_unique").on(table.storeName, table.period, table.type),
-  }),
+  table => ({
+    summaryUnique: uniqueIndex("oneira_summary_unique").on(
+      table.storeName,
+      table.period,
+      table.type
+    ),
+  })
 );
 
 export const storeSuggestions = mysqlTable("oneira_store_suggestions", {
@@ -138,7 +156,9 @@ export const storeSuggestions = mysqlTable("oneira_store_suggestions", {
   authorName: varchar("authorName", { length: 80 }).notNull(),
   title: varchar("title", { length: 160 }).notNull(),
   content: text("content").notNull(),
-  status: mysqlEnum("status", ["待查看", "处理中", "已采纳", "已回复"]).default("待查看").notNull(),
+  status: mysqlEnum("status", ["待查看", "处理中", "已采纳", "已回复"])
+    .default("待查看")
+    .notNull(),
   reply: text("reply"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

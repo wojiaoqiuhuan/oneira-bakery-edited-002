@@ -1,6 +1,20 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, BarChart3, ChevronRight, ClipboardCheck, CloudOff, LayoutDashboard, Loader2, MessageCircleWarning, Pencil, RefreshCw, Send, Trash2, UserRound } from "lucide-react";
+import {
+  AlertTriangle,
+  BarChart3,
+  ChevronRight,
+  ClipboardCheck,
+  CloudOff,
+  LayoutDashboard,
+  Loader2,
+  MessageCircleWarning,
+  Pencil,
+  RefreshCw,
+  Send,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 const IDENTITY_KEY = "oneira-identity";
@@ -8,21 +22,1591 @@ type Role = "manager" | "admin" | "store";
 type Identity = { role: Role; name: string; storeName?: string };
 const today = () => new Date().toISOString().slice(0, 10);
 const num = (v: unknown) => Number(v || 0);
-const money = (v: unknown) => `¥${num(v).toLocaleString("zh-CN", { maximumFractionDigits: 2 })}`;
-const amount = (v: unknown) => num(v).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) { return <section className={`soft-card p-5 ${className}`}>{children}</section>; }
-function Title({ title, action }: { title: string; action?: React.ReactNode }) { return <div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-lg font-extrabold text-[#58372c]">{title}</h2>{action}</div>; }
-function Badge({ children, red = false, green = false }: { children: React.ReactNode; red?: boolean; green?: boolean }) { return <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${red ? "bg-[#ffe7e3] text-[#bc4e42]" : green ? "bg-[#e4f6e8] text-[#388057]" : "bg-[#fff0d5] text-[#b66c22]"}`}>{children}</span>; }
-function Input({ label, value, onChange, type = "text", placeholder = "" }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) { return <label className="block"><span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">{label}</span><input type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className="h-10 w-full rounded-xl border border-[#eadbca] bg-[#fffdfa] px-3 text-sm outline-none focus:ring-2 focus:ring-[#f8dec2]" /></label>; }
-function Gate({ onEnter }: { onEnter: (i: Identity) => void }) { const stores = trpc.ops.publicStores.useQuery(); const verify = trpc.ops.verifyAccess.useMutation(); const [role, setRole] = useState<Role>("manager"); const [name, setName] = useState(""); const [pin, setPin] = useState(""); const [store, setStore] = useState(""); const submit = () => verify.mutate({ role, pin, storeName: role === "store" ? store : undefined }, { onSuccess: r => r.success ? onEnter({ role, name: name.trim() || (role === "store" ? "店长" : role === "manager" ? "运营经理" : "管理员"), storeName: role === "store" ? store : undefined }) : toast.error(r.message || "口令不正确"), onError: e => toast.error(e.message) }); return <div className="app-shell flex min-h-screen items-center justify-center p-5"><Card className="w-full max-w-[420px] p-6"><div className="text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f29a52] text-2xl text-white">✦</div><h1 className="mt-4 text-2xl font-black text-[#58372c]">ONEIRA <span className="font-medium text-[#b97a5a]">梦面包</span></h1><p className="mt-1 text-sm text-[#9b8172]">运营驾驶舱</p></div><div className="mt-6 grid grid-cols-3 gap-2">{([ ["manager", "运营经理"], ["admin", "管理员"], ["store", "门店端"] ] as const).map(([v, label]) => <button key={v} onClick={() => setRole(v)} className={`rounded-xl py-2 text-xs font-bold ${role === v ? "bg-[#fff0d4] text-[#bc6437]" : "bg-[#f7efe7] text-[#9b8172]"}`}>{label}</button>)}</div>{role === "store" && <label className="mt-4 block"><span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">选择门店</span><select value={store} onChange={e => setStore(e.target.value)} className="h-11 w-full rounded-xl border border-[#eadbca] bg-white px-3 text-sm"><option value="">请选择门店</option>{stores.data?.map(s => <option key={s.id}>{s.name}</option>)}</select></label>}{role === "store" && <div className="mt-3"><Input label="店长姓名" value={name} onChange={setName} /></div>}<div className="mt-3"><Input label="访问口令" value={pin} onChange={setPin} type="password" placeholder="请输入口令" /></div><button disabled={verify.isPending || (role === "store" && !store)} onClick={submit} className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#e47943] text-sm font-bold text-white disabled:opacity-50">{verify.isPending ? "验证中…" : "进入驾驶舱"}<ChevronRight size={16} /></button></Card></div>; }
+const money = (v: unknown) =>
+  `¥${num(v).toLocaleString("zh-CN", { maximumFractionDigits: 2 })}`;
+const amount = (v: unknown) =>
+  num(v).toLocaleString("zh-CN", { maximumFractionDigits: 2 });
+function Card({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <section className={`soft-card p-5 ${className}`}>{children}</section>;
+}
+function Title({ title, action }: { title: string; action?: React.ReactNode }) {
+  return (
+    <div className="mb-4 flex items-center justify-between gap-3">
+      <h2 className="text-lg font-extrabold text-[#58372c]">{title}</h2>
+      {action}
+    </div>
+  );
+}
+function Badge({
+  children,
+  red = false,
+  green = false,
+}: {
+  children: React.ReactNode;
+  red?: boolean;
+  green?: boolean;
+}) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${red ? "bg-[#ffe7e3] text-[#bc4e42]" : green ? "bg-[#e4f6e8] text-[#388057]" : "bg-[#fff0d5] text-[#b66c22]"}`}
+    >
+      {children}
+    </span>
+  );
+}
+function Input({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder = "",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">
+        {label}
+      </span>
+      <input
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        onChange={e => onChange(e.target.value)}
+        className="h-10 w-full rounded-xl border border-[#eadbca] bg-[#fffdfa] px-3 text-sm outline-none focus:ring-2 focus:ring-[#f8dec2]"
+      />
+    </label>
+  );
+}
+function Gate({ onEnter }: { onEnter: (i: Identity) => void }) {
+  const stores = trpc.ops.publicStores.useQuery();
+  const verify = trpc.ops.verifyAccess.useMutation();
+  const [role, setRole] = useState<Role>("manager");
+  const [name, setName] = useState("");
+  const [pin, setPin] = useState("");
+  const [store, setStore] = useState("");
+  const submit = () =>
+    verify.mutate(
+      { role, pin, storeName: role === "store" ? store : undefined },
+      {
+        onSuccess: r =>
+          r.success
+            ? onEnter({
+                role,
+                name:
+                  name.trim() ||
+                  (role === "store"
+                    ? "店长"
+                    : role === "manager"
+                      ? "运营经理"
+                      : "管理员"),
+                storeName: role === "store" ? store : undefined,
+              })
+            : toast.error(r.message || "口令不正确"),
+        onError: e => toast.error(e.message),
+      }
+    );
+  return (
+    <div className="app-shell flex min-h-screen items-center justify-center p-5">
+      <Card className="w-full max-w-[420px] p-6">
+        <div className="text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f29a52] text-2xl text-white">
+            ✦
+          </div>
+          <h1 className="mt-4 text-2xl font-black text-[#58372c]">
+            ONEIRA <span className="font-medium text-[#b97a5a]">梦面包</span>
+          </h1>
+          <p className="mt-1 text-sm text-[#9b8172]">运营驾驶舱</p>
+        </div>
+        <div className="mt-6 grid grid-cols-3 gap-2">
+          {(
+            [
+              ["manager", "运营经理"],
+              ["admin", "管理员"],
+              ["store", "门店端"],
+            ] as const
+          ).map(([v, label]) => (
+            <button
+              key={v}
+              onClick={() => setRole(v)}
+              className={`rounded-xl py-2 text-xs font-bold ${role === v ? "bg-[#fff0d4] text-[#bc6437]" : "bg-[#f7efe7] text-[#9b8172]"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {role === "store" && (
+          <label className="mt-4 block">
+            <span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">
+              选择门店
+            </span>
+            <select
+              value={store}
+              onChange={e => setStore(e.target.value)}
+              className="h-11 w-full rounded-xl border border-[#eadbca] bg-white px-3 text-sm"
+            >
+              <option value="">请选择门店</option>
+              {stores.data?.map(s => (
+                <option key={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {role === "store" && (
+          <div className="mt-3">
+            <Input label="店长姓名" value={name} onChange={setName} />
+          </div>
+        )}
+        <div className="mt-3">
+          <Input
+            label="访问口令"
+            value={pin}
+            onChange={setPin}
+            type="password"
+            placeholder="请输入口令"
+          />
+        </div>
+        <button
+          disabled={verify.isPending || (role === "store" && !store)}
+          onClick={submit}
+          className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#e47943] text-sm font-bold text-white disabled:opacity-50"
+        >
+          {verify.isPending ? "验证中…" : "进入驾驶舱"}
+          <ChevronRight size={16} />
+        </button>
+      </Card>
+    </div>
+  );
+}
 
 type Form = Record<string, any>;
-function defaultForm(identity: Identity, report?: any): Form { const f = { storeName: identity.storeName || "", reportDate: today(), weather: "晴", avgTicket: "", revenue: "", traffic: "", wasteAmount: "", wasteQty: "", tastingQty: "", tastingAmount: "", storedCount: "", storedAmount: "", praiseCount: "", issue: "", issueStatus: "待处理", solver: "", solution: "", deadline: "", todayDone: "", nextPlan: "" }; return report ? { ...f, ...report, ...Object.fromEntries(Object.entries(report).map(([k, v]) => [k, v ?? ""])) } : f; }
-function ReportForm({ identity, report, stores, onSaved, onCancel }: { identity: Identity; report?: any; stores: any[]; onSaved: () => void; onCancel: () => void }) { const [f, setF] = useState<Form>(() => defaultForm(identity, report)); const save = trpc.ops.upsertReport.useMutation({ onSuccess: () => { toast.success("日报已保存"); onSaved(); }, onError: e => toast.error(e.message) }); const set = (k: string, v: any) => setF((x: Form) => ({ ...x, [k]: v })); const submit = () => { const payload: any = { ...f, id: report?.id, role: identity.role, identityName: identity.name, identityStoreName: identity.storeName }; ["avgTicket", "revenue", "traffic", "wasteAmount", "wasteQty", "tastingQty", "tastingAmount", "storedCount", "storedAmount", "praiseCount"].forEach(k => payload[k] = num(f[k])); if (!payload.storeName) return toast.error("请选择门店"); save.mutate(payload); }; const metrics = [["revenue", "实收金额"], ["traffic", "客流"], ["avgTicket", "客单价"], ["wasteAmount", "报损金额"], ["wasteQty", "报损数量"], ["tastingQty", "试吃数量"], ["tastingAmount", "试吃金额"], ["storedCount", "储值笔数"], ["storedAmount", "储值金额"], ["praiseCount", "好评数"]] as const; return <Card><Title title={report ? "编辑日报" : "今日打卡"} action={<Badge>日周月统一入口</Badge>} /><div className="mb-4 rounded-xl bg-[#fff6e6] p-3 text-xs leading-5 text-[#a66b31]">日报、周报、月报已合并到驾驶舱。完成每日打卡后，周/月数据自动汇总；日周月总结暂不开放提交。</div><div className="grid gap-3 sm:grid-cols-3">{identity.role === "store" ? <Input label="门店" value={f.storeName} onChange={v => set("storeName", v)} /> : <label className="block"><span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">门店</span><select value={f.storeName} onChange={e => set("storeName", e.target.value)} className="h-10 w-full rounded-xl border border-[#eadbca] bg-white px-3 text-sm"><option value="">请选择门店</option>{stores.map(s => <option key={s.id}>{s.name}</option>)}</select></label>}<Input label="日期" value={f.reportDate} onChange={v => set("reportDate", v)} type="date" /><label className="block"><span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">天气</span><select value={f.weather} onChange={e => set("weather", e.target.value)} className="h-10 w-full rounded-xl border border-[#eadbca] bg-white px-3 text-sm"><option>晴</option><option>阴</option><option>雨</option><option>雪</option></select></label></div><div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">{metrics.map(([k, label]) => <Input key={k} label={label} value={String(f[k] ?? "")} onChange={v => set(k, v)} type="number" />)}</div><div className="mt-3 grid gap-3 sm:grid-cols-2"><label><span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">今日完成</span><textarea value={f.todayDone} onChange={e => set("todayDone", e.target.value)} className="min-h-20 w-full rounded-xl border border-[#eadbca] bg-white p-3 text-sm" /></label><label><span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">明日计划</span><textarea value={f.nextPlan} onChange={e => set("nextPlan", e.target.value)} className="min-h-20 w-full rounded-xl border border-[#eadbca] bg-white p-3 text-sm" /></label></div><div className="mt-3 rounded-2xl bg-[#fffaf6] p-3"><div className="mb-2 flex items-center gap-2 text-xs font-bold text-[#704b3b]"><AlertTriangle size={14} className="text-[#c65044]" />问题记录（主页可继续编辑）</div><div className="grid gap-3 sm:grid-cols-2"><textarea value={f.issue} onChange={e => set("issue", e.target.value)} placeholder="没有问题可留空" className="min-h-20 w-full rounded-xl border border-[#eadbca] bg-white p-3 text-sm" /><div className="grid gap-2"><select value={f.issueStatus} onChange={e => set("issueStatus", e.target.value)} className="h-10 rounded-xl border border-[#eadbca] bg-white px-3 text-sm"><option>待处理</option><option>处理中</option><option>已解决</option></select><input value={f.solver} onChange={e => set("solver", e.target.value)} placeholder="处理人" className="h-10 rounded-xl border border-[#eadbca] bg-white px-3 text-sm" /><input value={f.solution} onChange={e => set("solution", e.target.value)} placeholder="处理措施 / 解决结果" className="h-10 rounded-xl border border-[#eadbca] bg-white px-3 text-sm" /><Input label="解决期限" value={f.deadline} onChange={v => set("deadline", v)} type="date" /></div></div></div><div className="mt-4 flex gap-2"><button onClick={submit} disabled={save.isPending} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#e47943] text-sm font-bold text-white disabled:opacity-50"><ClipboardCheck size={16} />{save.isPending ? "保存中…" : "保存打卡"}</button><button onClick={onCancel} disabled={save.isPending} className="h-11 rounded-xl bg-[#f1e4d8] px-5 text-xs font-bold text-[#987d6e]">{report ? "取消编辑" : "返回驾驶舱"}</button></div></Card>; }
-function Issues({ reports, identity, refresh, onEdit }: { reports: any[]; identity: Identity; refresh: () => void; onEdit: (r: any) => void }) { const mutation = trpc.ops.updateIssue.useMutation({ onSuccess: () => { toast.success("问题处理已更新"); refresh(); }, onError: e => toast.error(e.message) }); const issues = reports.filter(r => r.issue); const [selectedId, setSelectedId] = useState<number | null>(null); const active = issues.find((r: any) => r.id === selectedId) || issues[0]; return <Card><Title title="问题跟进" action={<Badge red={!!issues.length} green={!issues.length}>{issues.length} 条</Badge>} />{issues.length ? <div className="grid gap-4 lg:grid-cols-[240px_1fr]"><div className="space-y-2">{issues.map((r: any) => <button key={r.id} onClick={() => setSelectedId(r.id)} className={`w-full rounded-xl border p-3 text-left transition ${active?.id === r.id ? "border-[#e59a67] bg-[#fff0d4]" : "border-[#f1e1d5] bg-[#fffaf6] hover:bg-white"}`}><div className="flex items-center justify-between gap-2"><b className="truncate text-xs text-[#604236]">{r.storeName}</b><Badge red={r.issueStatus !== "已解决"} green={r.issueStatus === "已解决"}>{r.issueStatus}</Badge></div><div className="mt-1 truncate text-[11px] text-[#8b7567]">{r.issue}</div><div className="mt-1 text-[10px] text-[#ad9586]">{r.reportDate}</div></button>)}</div>{active && <div className="rounded-2xl border border-[#f1e1d5] bg-[#fffaf6] p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><b className="text-sm text-[#604236]">{active.storeName} · {active.reportDate}</b><div className="mt-1 text-xs text-[#9b8172]">当前选择的问题详情</div></div><Badge red={active.issueStatus !== "已解决"} green={active.issueStatus === "已解决"}>{active.issueStatus}</Badge></div><p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-[#71574b]">{active.issue}</p><p className="mt-2 text-xs text-[#8b7567]">{active.solution ? `措施：${active.solution}` : "暂无处理措施"}{active.solver ? ` · 处理人：${active.solver}` : ""}</p><div className="mt-4 flex flex-wrap gap-2">{identity.role === "store" && <button onClick={() => onEdit(active)} className="rounded-lg border border-[#eadbca] bg-white px-3 py-2 text-xs font-bold text-[#8f654f]"><Pencil size={13} className="mr-1 inline" />编辑日报</button>}{identity.role !== "store" && <button onClick={() => mutation.mutate({ role: identity.role as "manager" | "admin", id: active.id, issueStatus: active.issueStatus === "已解决" ? "处理中" : "已解决", solver: identity.name, solution: active.solution || "已跟进", deadline: active.deadline || "" })} className="rounded-lg bg-[#6b8dbd] px-3 py-2 text-xs font-bold text-white">{active.issueStatus === "已解决" ? "重新跟进" : "标记已解决"}</button>}</div></div>}</div> : <div className="py-6 text-center text-sm text-[#a58d7e]">暂无问题</div>}</Card>; }
-function Suggestions({ identity }: { identity: Identity }) { const q = trpc.ops.listSuggestions.useQuery({ role: identity.role, storeName: identity.storeName, identityName: identity.name }); const [title, setTitle] = useState(""); const [content, setContent] = useState(""); const [editing, setEditing] = useState<any>(); const submit = trpc.ops.submitSuggestion.useMutation({ onSuccess: () => { toast.success("建议已提交"); setTitle(""); setContent(""); q.refetch(); }, onError: e => toast.error(e.message) }); const edit = trpc.ops.editSuggestion.useMutation({ onSuccess: () => { toast.success("建议已更新"); setEditing(undefined); q.refetch(); }, onError: e => toast.error(e.message) }); const remove = trpc.ops.deleteSuggestion.useMutation({ onSuccess: () => { toast.success("建议已删除"); q.refetch(); }, onError: e => toast.error(e.message) }); const manage = trpc.ops.updateSuggestion.useMutation({ onSuccess: () => { toast.success("建议处理已保存"); q.refetch(); }, onError: e => toast.error(e.message) }); const manager = identity.role !== "store"; const [replyDraft, setReplyDraft] = useState<Record<number, string>>({}); return <Card><Title title="建议中心" action={<Badge>主页查看编辑</Badge>} />{!manager && <div className="mb-5 grid gap-3 rounded-2xl bg-[#fffaf6] p-4"><Input label="建议标题" value={title} onChange={setTitle} placeholder="例如：优化排班交接" /><textarea value={content} onChange={e => setContent(e.target.value)} placeholder="详细说明" className="min-h-20 rounded-xl border border-[#eadbca] bg-white p-3 text-sm" /><button disabled={!title.trim() || !content.trim()} onClick={() => submit.mutate({ role: "store", identityName: identity.name, storeName: identity.storeName || "", title: title.trim(), content: content.trim() })} className="flex h-10 items-center justify-center gap-2 rounded-xl bg-[#e47943] text-xs font-bold text-white disabled:opacity-50"><Send size={14} />提交建议</button></div>}<div className="space-y-3">{q.data?.map((item: any) => <div key={item.id} className="rounded-2xl border border-[#f1e1d5] bg-[#fffaf6] p-4"><div className="flex justify-between gap-3"><div><b className="text-sm text-[#58372c]">{item.title}</b><div className="mt-1 text-[11px] text-[#a18778]">{item.storeName} · {item.authorName}</div></div>{!manager && <div className="flex gap-1"><button onClick={() => setEditing({ ...item })} className="p-2 text-[#8f654f]"><Pencil size={14} /></button><button onClick={() => window.confirm("确认删除这条建议吗？") && remove.mutate({ role: "store", identityName: identity.name, identityStoreName: identity.storeName, id: item.id })} className="p-2 text-[#c65044]"><Trash2 size={14} /></button></div>}</div><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#71574b]">{item.content}</p><div className="mt-2"><Badge green={item.status === "已采纳" || item.status === "已回复"}>{item.status}</Badge>{item.reply && <span className="ml-2 text-xs text-[#765848]">回复：{item.reply}</span>}</div>{manager && <div className="mt-3 flex gap-2 border-t border-[#f1e6dc] pt-3"><input value={replyDraft[item.id] ?? item.reply ?? ""} onChange={e => setReplyDraft(draft => ({ ...draft, [item.id]: e.target.value }))} placeholder="填写回复（可选）" className="h-9 min-w-0 flex-1 rounded-xl border border-[#eadbca] bg-white px-3 text-xs" /><select defaultValue={item.status} onChange={e => manage.mutate({ role: identity.role as "manager" | "admin", id: item.id, status: e.target.value as any, reply: item.reply || "" })} className="h-9 rounded-xl border border-[#eadbca] bg-white px-2 text-xs"><option>待查看</option><option>处理中</option><option>已采纳</option><option>已回复</option></select><button onClick={() => manage.mutate({ role: identity.role as "manager" | "admin", id: item.id, status: item.status, reply: item.reply || "" })} className="rounded-xl bg-[#6b8dbd] px-3 text-xs font-bold text-white">保存处理</button></div>}</div>)}{!q.data?.length && <div className="py-6 text-center text-sm text-[#a58d7e]">暂无建议</div>}</div>{editing && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#3f281f]/40 p-4"><div className="w-full max-w-lg rounded-3xl bg-[#f8f0e5] p-5"><Title title="编辑建议" action={<button onClick={() => setEditing(undefined)} className="rounded-lg bg-white px-3 py-2 text-xs">关闭</button>} /><div className="grid gap-3"><Input label="建议标题" value={editing.title} onChange={v => setEditing({ ...editing, title: v })} /><textarea value={editing.content} onChange={e => setEditing({ ...editing, content: e.target.value })} className="min-h-28 rounded-xl border border-[#eadbca] bg-white p-3 text-sm" /><button onClick={() => edit.mutate({ role: "store", identityName: identity.name, identityStoreName: identity.storeName, id: editing.id, title: editing.title.trim(), content: editing.content.trim() })} className="h-11 rounded-xl bg-[#e47943] text-sm font-bold text-white">保存修改</button></div></div></div>}</Card>; }
-function Summary({ data, identity }: { data: any; identity: Identity }) { const d = new Date(); d.setDate(d.getDate() - 6); const [start, setStart] = useState(d.toISOString().slice(0, 10)); const [end, setEnd] = useState(today()); const [store, setStore] = useState(identity.storeName || "全部门店"); const invalidRange = start > end; const rows = invalidRange ? [] : (data.reports || []).filter((r: any) => r.reportDate >= start && r.reportDate <= end && (store === "全部门店" || r.storeName === store)); return <div className="space-y-5"><div><div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#bd8462]">CUSTOM RANGE</div><h1 className="mt-1 text-2xl font-extrabold text-[#4c2d24]">汇总查询</h1><p className="mt-1 text-sm text-[#977a69]">按起止日期自定义查看日报汇总。</p></div><Card><div className="grid gap-3 sm:grid-cols-3"><Input label="开始日期" value={start} onChange={setStart} type="date" /><Input label="结束日期" value={end} onChange={setEnd} type="date" /><label><span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">门店</span><select disabled={identity.role === "store"} value={store} onChange={e => setStore(e.target.value)} className="h-10 w-full rounded-xl border border-[#eadbca] bg-white px-3 text-sm"><option>全部门店</option>{data.stores?.map((s: any) => <option key={s.id}>{s.name}</option>)}</select></label></div>{invalidRange && <p className="mt-3 text-xs font-semibold text-[#c65044]">结束日期不能早于开始日期，请重新选择。</p>}</Card><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{[["实收", money(rows.reduce((s: number, r: any) => s + num(r.revenue), 0))], ["报损", money(rows.reduce((s: number, r: any) => s + num(r.wasteAmount), 0))], ["客流", amount(rows.reduce((s: number, r: any) => s + num(r.traffic), 0))], ["问题", String(rows.filter((r: any) => r.issue).length) ]].map(([label, value]) => <Card key={label}><div className="text-xs text-[#9b8172]">区间{label}</div><b className="mt-2 block text-xl text-[#5d382b]">{value}</b></Card>)}</div><Card><Title title="日明细" action={<Badge>{rows.length} 条日报</Badge>} />{rows.length ? <div className="overflow-x-auto"><table className="w-full min-w-[600px] text-left text-xs"><thead className="text-[#a18778]"><tr><th className="pb-2">日期</th><th>门店</th><th>实收</th><th>客流</th><th>报损</th><th>问题</th></tr></thead><tbody>{rows.map((r: any) => <tr key={r.id} className="border-t border-[#f1e6dc] text-[#68483a]"><td className="py-3">{r.reportDate}</td><td>{r.storeName}</td><td>{money(r.revenue)}</td><td>{amount(r.traffic)}</td><td>{money(r.wasteAmount)}</td><td>{r.issue ? <Badge red>{r.issueStatus}</Badge> : <Badge green>无</Badge>}</td></tr>)}</tbody></table></div> : <div className="py-8 text-center text-sm text-[#a58d7e]">该日期区间暂无数据</div>}<div className="mt-4 rounded-xl bg-[#fff6e6] p-3 text-xs leading-5 text-[#a66b31]">日周月总结暂不支持提交；当前页面仅提供数据查看和日期筛选。</div></Card></div>; }
-function OpeningStores({ data, identity, refresh }: { data: any; identity: Identity; refresh: () => void }) { const canEdit = identity.role === "manager" || identity.role === "admin"; const stores = (data.stores || []).filter((s: any) => s.status !== "正常运营"); const [editing, setEditing] = useState<any>(null); const mutation = trpc.ops.upsertNode.useMutation({ onSuccess: () => { toast.success("筹备节点已更新"); setEditing(null); refresh(); }, onError: e => toast.error(e.message) }); return <Card><Title title="筹备 / 装修中门店" action={<Badge>{stores.length} 家</Badge>} />{stores.length ? <div className="grid gap-3 md:grid-cols-2">{stores.map((store: any) => { const nodes = (data.openingNodes || []).filter((node: any) => node.storeName === store.name); return <div key={store.id} className="rounded-2xl border border-[#e7dfd7] bg-[#fffaf6] p-4"><div className="flex items-start justify-between gap-2"><div><b className="text-sm text-[#58372c]">{store.name}</b><div className="mt-1 text-xs text-[#9b8172]">{store.status} · 开业 {store.openingDate || "待定"}</div></div><Badge>{nodes.filter((n: any) => n.completed).length}/{nodes.length} 已完成</Badge></div>{nodes.length ? <div className="mt-3 space-y-2">{nodes.map((node: any) => <div key={node.id} className="rounded-xl bg-white p-3"><div className="flex items-center justify-between gap-2"><div className="min-w-0"><b className="block truncate text-xs text-[#68483a]">{node.nodeName}</b><span className="text-[10px] text-[#a18778]">{node.planDate} · {node.owner}</span></div><Badge green={node.status === "已完成"} red={node.status === "未开始"}>{node.status}</Badge></div>{canEdit && <button onClick={() => setEditing({ ...node })} className="mt-2 rounded-lg border border-[#eadbca] bg-[#fffaf6] px-3 py-1.5 text-[11px] font-bold text-[#8f654f]"><Pencil size={12} className="mr-1 inline" />编辑节点</button>}{editing?.id === node.id && <div className="mt-3 grid gap-2 border-t border-[#f1e6dc] pt-3"><Input label="节点名称" value={editing.nodeName} onChange={v => setEditing({ ...editing, nodeName: v })} /><div className="grid gap-2 sm:grid-cols-2"><Input label="计划日期" value={editing.planDate} onChange={v => setEditing({ ...editing, planDate: v })} type="date" /><Input label="负责人" value={editing.owner} onChange={v => setEditing({ ...editing, owner: v })} /></div><select value={editing.status} onChange={e => setEditing({ ...editing, status: e.target.value, completed: e.target.value === "已完成" })} className="h-10 rounded-xl border border-[#eadbca] bg-white px-3 text-xs"><option>未开始</option><option>进行中</option><option>已完成</option></select><div className="flex gap-2"><button onClick={() => mutation.mutate({ role: identity.role as "manager" | "admin", id: editing.id, storeName: editing.storeName, nodeName: editing.nodeName.trim(), planDate: editing.planDate, status: editing.status, owner: editing.owner.trim() || identity.name, completed: editing.status === "已完成" })} className="rounded-xl bg-[#6b8dbd] px-3 py-2 text-xs font-bold text-white">保存节点</button><button onClick={() => setEditing(null)} className="rounded-xl bg-[#f1e4d8] px-3 py-2 text-xs font-bold text-[#987d6e]">取消</button></div></div>}</div>)}</div> : <div className="mt-3 text-xs text-[#a18778]">暂无筹备节点，可在管理工具中新增。</div>}</div>; })}</div> : <div className="py-6 text-center text-sm text-[#a58d7e]">暂无筹备或装修中门店</div>}</Card>; }
-function Dashboard({ data, identity, refresh, edit }: { data: any; identity: Identity; refresh: () => void; edit: (r?: any) => void }) { const visible = identity.role === "store" ? (data.reports || []).filter((r: any) => r.storeName === identity.storeName) : data.reports || []; const recent = visible.slice(0, 6); const todayRows = visible.filter((r: any) => r.reportDate === today()); const [formOpen, setFormOpen] = useState(false); const [overlay, setOverlay] = useState<"issues" | "suggestions" | null>(null); return <div className="space-y-5"><div><div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#bd8462]">ONEIRA OPERATIONS HUB</div><h1 className="mt-1 text-2xl font-extrabold text-[#4c2d24]">驾驶舱</h1><p className="mt-1 text-sm text-[#977a69]">日周月统一工作台：从这里打卡、查看和处理。</p></div>{formOpen && <ReportForm identity={identity} stores={data.stores || []} onSaved={() => { setFormOpen(false); refresh(); }} onCancel={() => setFormOpen(false)} />}{!formOpen && <Card><Title title="今天做什么" action={<Badge>{todayRows.length} 条今日日报</Badge>} /><div className="grid gap-3 sm:grid-cols-3"><button onClick={() => { edit(undefined); setFormOpen(false); }} className="rounded-2xl bg-[#fff0d4] p-4 text-left"><ClipboardCheck className="text-[#c2693d]" size={22} /><b className="mt-3 block text-sm text-[#704434]">去打卡填日报</b><span className="mt-1 block text-xs text-[#a27a64]">新增或补填指定日期</span></button><button onClick={() => setOverlay("issues")} className="rounded-2xl bg-[#fff0ee] p-4 text-left"><AlertTriangle className="text-[#c65044]" size={22} /><b className="mt-3 block text-sm text-[#704434]">查看并处理问题</b><span className="mt-1 block text-xs text-[#a27a64]">主页直接编辑跟进</span></button><button onClick={() => setOverlay("suggestions")} className="rounded-2xl bg-[#edf3ff] p-4 text-left"><MessageCircleWarning className="text-[#5a76b0]" size={22} /><b className="mt-3 block text-sm text-[#704434]">查看建议中心</b><span className="mt-1 block text-xs text-[#a27a64]">查看、编辑、回复一处完成</span></button></div></Card>}<Card><Title title="日周月合并概览" action={<Badge>自动汇总</Badge>} /><div className="grid grid-cols-2 gap-3 sm:grid-cols-4"><div><span className="text-xs text-[#9b8172]">近 7 日实收</span><b className="mt-1 block text-xl text-[#5d382b]">{money(visible.filter((r: any) => r.reportDate >= new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10)).reduce((s: number, r: any) => s + num(r.revenue), 0))}</b></div><div><span className="text-xs text-[#9b8172]">日报记录</span><b className="mt-1 block text-xl text-[#5d382b]">{visible.length}</b></div><div><span className="text-xs text-[#9b8172]">客流</span><b className="mt-1 block text-xl text-[#5d382b]">{amount(visible.reduce((s: number, r: any) => s + num(r.traffic), 0))}</b></div><div><span className="text-xs text-[#9b8172]">问题</span><b className="mt-1 block text-xl text-[#c65044]">{visible.filter((r: any) => r.issue).length}</b></div></div><div className="mt-4 rounded-xl bg-[#fff6e6] p-3 text-xs leading-5 text-[#a66b31]">周报、月报由日报自动汇总，日周月总结暂不提交。</div></Card><Card><Title title="最近日报" action={<Badge>{recent.length} 条</Badge>} />{recent.map((r: any) => <div key={r.id} className="flex items-center justify-between gap-3 border-t border-[#f1e6dc] py-3 first:border-0"><div><b className="text-sm text-[#604236]">{r.storeName} · {r.reportDate}</b><div className="mt-1 text-xs text-[#9b8172]">实收 {money(r.revenue)} · 客流 {amount(r.traffic)}{r.issue ? " · 有问题" : ""}</div></div><button onClick={() => edit(r)} className="rounded-lg border border-[#eadbca] bg-white px-3 py-2 text-xs font-bold text-[#8f654f]"><Pencil size={13} className="mr-1 inline" />编辑</button></div>)}</Card><OpeningStores data={data} identity={identity} refresh={refresh} /><div className="grid gap-3 sm:grid-cols-2"><button id="issues" onClick={() => setOverlay("issues")} className="rounded-2xl border border-[#f1d9d3] bg-[#fff5f2] p-4 text-left transition hover:-translate-y-0.5"><div className="flex items-center gap-2"><AlertTriangle size={18} className="text-[#c65044]" /><b className="text-sm text-[#704434]">问题处理</b><Badge red={visible.filter((r: any) => r.issue && r.issueStatus !== "已解决").length > 0}>{visible.filter((r: any) => r.issue).length} 条问题</Badge></div><p className="mt-2 text-xs text-[#a27a64]">点击弹窗选择问题并处理</p></button><button id="suggestions" onClick={() => setOverlay("suggestions")} className="rounded-2xl border border-[#dbe5f7] bg-[#f3f7ff] p-4 text-left transition hover:-translate-y-0.5"><div className="flex items-center gap-2"><MessageCircleWarning size={18} className="text-[#5a76b0]" /><b className="text-sm text-[#704434]">建议中心</b><Badge>{identity.role === "store" ? "查看 / 编辑" : "查看 / 回复"}</Badge></div><p className="mt-2 text-xs text-[#7d91b4]">点击弹窗查看建议、编辑或回复</p></button></div>{overlay && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#3f281f]/45 p-3 sm:p-6"><button aria-label="关闭弹窗" onClick={() => setOverlay(null)} className="absolute inset-0" /><div className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-[#f8f0e5] p-3 shadow-2xl sm:p-5"><div className="mb-3 flex items-center justify-between"><b className="text-lg text-[#58372c]">{overlay === "issues" ? "问题处理" : "建议中心"}</b><button onClick={() => setOverlay(null)} className="rounded-xl bg-white px-4 py-2 text-xs font-bold text-[#987d6e]">关闭</button></div>{overlay === "issues" ? <Issues reports={visible} identity={identity} refresh={refresh} onEdit={r => { setOverlay(null); edit(r); setFormOpen(false); }} /> : <Suggestions identity={identity} />}</div></div>}</div>; }
-function Main({ identity, logout }: { identity: Identity; logout: () => void }) { const query = trpc.ops.bootstrap.useQuery({ role: identity.role, storeName: identity.storeName }, { retry: false }); const refresh = () => query.refetch(); const [section, setSection] = useState<"dashboard" | "summary">("dashboard"); const [editing, setEditing] = useState<any>(null); if (query.isLoading) return <div className="flex min-h-screen items-center justify-center bg-[#f8f0e5]"><Loader2 className="animate-spin text-[#e47943]" /></div>; if (query.error || !query.data) return <div className="flex min-h-screen items-center justify-center bg-[#f8f0e5] p-5"><Card className="text-center"><CloudOff className="mx-auto text-[#c65044]" /><p className="mt-3 text-sm">云端数据暂时无法加载</p><button onClick={refresh} className="mt-4 rounded-xl bg-[#e47943] px-4 py-2 text-xs font-bold text-white">重新加载</button></Card></div>; const data = query.data as any; return <div className="app-shell min-h-screen"><header className="sticky top-0 z-30 border-b border-[#eadbce]/80 bg-[#f8f0e5]/90 backdrop-blur-xl"><div className="app-container !pb-0"><div className="flex h-[68px] items-center justify-between"><div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f29a52] text-xl text-white">✦</div><div><b className="text-sm text-[#58372c]">ONEIRA <span className="font-medium text-[#b97a5a]">梦面包</span></b><div className="text-[10px] text-[#a18778]">{section === "dashboard" ? "驾驶舱" : "汇总查询"}</div></div></div><div className="flex items-center gap-2"><span className="hidden text-[11px] text-[#6a9475] sm:block">已同步</span><button onClick={refresh} className="rounded-full p-2 text-[#a17f6c]"><RefreshCw size={16} /></button><button onClick={logout} className="flex h-8 w-8 items-center justify-center rounded-full bg-[#6b4435] text-white"><UserRound size={15} /></button></div></div></div></header><main className="app-container pt-5">{section === "dashboard" ? <Dashboard data={data} identity={identity} refresh={refresh} edit={r => setEditing(r)} /> : <Summary data={data} identity={identity} />}{editing !== null && <div className="fixed inset-0 z-50 overflow-y-auto bg-[#3f281f]/40 p-4"><div className="mx-auto max-w-3xl pt-4"><ReportForm identity={identity} report={editing} stores={data.stores || []} onSaved={() => { setEditing(null); refresh(); }} onCancel={() => setEditing(null)} /></div></div>}</main><nav className="safe-bottom fixed bottom-0 left-0 right-0 z-40 border-t border-[#eadbce] bg-[#fffaf5]/95 backdrop-blur-xl"><div className="mx-auto grid max-w-[420px] grid-cols-2 px-2 py-2"><button onClick={() => { setSection("dashboard"); setEditing(null); }} className={`flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-bold ${section === "dashboard" ? "bg-[#fff0d4] text-[#bc6437]" : "text-[#a68b7b]"}`}><LayoutDashboard size={18} /><span>驾驶舱</span></button><button onClick={() => setSection("summary")} className={`flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-bold ${section === "summary" ? "bg-[#fff0d4] text-[#bc6437]" : "text-[#a68b7b]"}`}><BarChart3 size={18} /><span>汇总查询</span></button></div></nav></div>; }
-export default function Home() { const [identity, setIdentity] = useState<Identity | null>(() => { try { const s = localStorage.getItem(IDENTITY_KEY); return s ? JSON.parse(s) : null; } catch { return null; } }); const enter = (i: Identity) => { localStorage.setItem(IDENTITY_KEY, JSON.stringify(i)); setIdentity(i); }; const logout = () => { localStorage.removeItem(IDENTITY_KEY); setIdentity(null); }; return identity ? <Main identity={identity} logout={logout} /> : <Gate onEnter={enter} />; }
+function defaultForm(identity: Identity, report?: any): Form {
+  const f = {
+    storeName: identity.storeName || "",
+    reportDate: today(),
+    weather: "晴",
+    avgTicket: "",
+    revenue: "",
+    traffic: "",
+    wasteAmount: "",
+    wasteQty: "",
+    tastingQty: "",
+    tastingAmount: "",
+    storedCount: "",
+    storedAmount: "",
+    praiseCount: "",
+    issue: "",
+    issueStatus: "待处理",
+    solver: "",
+    solution: "",
+    deadline: "",
+    todayDone: "",
+    nextPlan: "",
+  };
+  return report
+    ? {
+        ...f,
+        ...report,
+        ...Object.fromEntries(
+          Object.entries(report).map(([k, v]) => [k, v ?? ""])
+        ),
+      }
+    : f;
+}
+function ReportForm({
+  identity,
+  report,
+  stores,
+  onSaved,
+  onCancel,
+}: {
+  identity: Identity;
+  report?: any;
+  stores: any[];
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const [f, setF] = useState<Form>(() => defaultForm(identity, report));
+  const save = trpc.ops.upsertReport.useMutation({
+    onSuccess: () => {
+      toast.success("日报已保存");
+      onSaved();
+    },
+    onError: e => toast.error(e.message),
+  });
+  const set = (k: string, v: any) => setF((x: Form) => ({ ...x, [k]: v }));
+  const submit = () => {
+    const payload: any = {
+      ...f,
+      id: report?.id,
+      role: identity.role,
+      identityName: identity.name,
+      identityStoreName: identity.storeName,
+    };
+    [
+      "avgTicket",
+      "revenue",
+      "traffic",
+      "wasteAmount",
+      "wasteQty",
+      "tastingQty",
+      "tastingAmount",
+      "storedCount",
+      "storedAmount",
+      "praiseCount",
+    ].forEach(k => (payload[k] = num(f[k])));
+    if (!payload.storeName) return toast.error("请选择门店");
+    save.mutate(payload);
+  };
+  const metrics = [
+    ["revenue", "实收金额"],
+    ["traffic", "客流"],
+    ["avgTicket", "客单价"],
+    ["wasteAmount", "报损金额"],
+    ["wasteQty", "报损数量"],
+    ["tastingQty", "试吃数量"],
+    ["tastingAmount", "试吃金额"],
+    ["storedCount", "储值笔数"],
+    ["storedAmount", "储值金额"],
+    ["praiseCount", "好评数"],
+  ] as const;
+  return (
+    <Card>
+      <Title
+        title={report ? "编辑日报" : "今日打卡"}
+        action={<Badge>日周月统一入口</Badge>}
+      />
+      <div className="mb-4 rounded-xl bg-[#fff6e6] p-3 text-xs leading-5 text-[#a66b31]">
+        日报、周报、月报已合并到驾驶舱。完成每日打卡后，可按日期查看汇总，并提交对应的日、周、月总结。
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {identity.role === "store" ? (
+          <Input
+            label="门店"
+            value={f.storeName}
+            onChange={v => set("storeName", v)}
+          />
+        ) : (
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">
+              门店
+            </span>
+            <select
+              value={f.storeName}
+              onChange={e => set("storeName", e.target.value)}
+              className="h-10 w-full rounded-xl border border-[#eadbca] bg-white px-3 text-sm"
+            >
+              <option value="">请选择门店</option>
+              {stores.map(s => (
+                <option key={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        <Input
+          label="日期"
+          value={f.reportDate}
+          onChange={v => set("reportDate", v)}
+          type="date"
+        />
+        <label className="block">
+          <span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">
+            天气
+          </span>
+          <select
+            value={f.weather}
+            onChange={e => set("weather", e.target.value)}
+            className="h-10 w-full rounded-xl border border-[#eadbca] bg-white px-3 text-sm"
+          >
+            <option>晴</option>
+            <option>阴</option>
+            <option>雨</option>
+            <option>雪</option>
+          </select>
+        </label>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+        {metrics.map(([k, label]) => (
+          <Input
+            key={k}
+            label={label}
+            value={String(f[k] ?? "")}
+            onChange={v => set(k, v)}
+            type="number"
+          />
+        ))}
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <label>
+          <span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">
+            今日完成
+          </span>
+          <textarea
+            value={f.todayDone}
+            onChange={e => set("todayDone", e.target.value)}
+            className="min-h-20 w-full rounded-xl border border-[#eadbca] bg-white p-3 text-sm"
+          />
+        </label>
+        <label>
+          <span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">
+            明日计划
+          </span>
+          <textarea
+            value={f.nextPlan}
+            onChange={e => set("nextPlan", e.target.value)}
+            className="min-h-20 w-full rounded-xl border border-[#eadbca] bg-white p-3 text-sm"
+          />
+        </label>
+      </div>
+      <div className="mt-3 rounded-2xl bg-[#fffaf6] p-3">
+        <div className="mb-2 flex items-center gap-2 text-xs font-bold text-[#704b3b]">
+          <AlertTriangle size={14} className="text-[#c65044]" />
+          问题记录（主页可继续编辑）
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <textarea
+            value={f.issue}
+            onChange={e => set("issue", e.target.value)}
+            placeholder="没有问题可留空"
+            className="min-h-20 w-full rounded-xl border border-[#eadbca] bg-white p-3 text-sm"
+          />
+          <div className="grid gap-2">
+            <select
+              value={f.issueStatus}
+              onChange={e => set("issueStatus", e.target.value)}
+              className="h-10 rounded-xl border border-[#eadbca] bg-white px-3 text-sm"
+            >
+              <option>待处理</option>
+              <option>处理中</option>
+              <option>已解决</option>
+            </select>
+            <input
+              value={f.solver}
+              onChange={e => set("solver", e.target.value)}
+              placeholder="处理人"
+              className="h-10 rounded-xl border border-[#eadbca] bg-white px-3 text-sm"
+            />
+            <input
+              value={f.solution}
+              onChange={e => set("solution", e.target.value)}
+              placeholder="处理措施 / 解决结果"
+              className="h-10 rounded-xl border border-[#eadbca] bg-white px-3 text-sm"
+            />
+            <Input
+              label="解决期限"
+              value={f.deadline}
+              onChange={v => set("deadline", v)}
+              type="date"
+            />
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 flex gap-2">
+        <button
+          onClick={submit}
+          disabled={save.isPending}
+          className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#e47943] text-sm font-bold text-white disabled:opacity-50"
+        >
+          <ClipboardCheck size={16} />
+          {save.isPending ? "保存中…" : "保存打卡"}
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={save.isPending}
+          className="h-11 rounded-xl bg-[#f1e4d8] px-5 text-xs font-bold text-[#987d6e]"
+        >
+          {report ? "取消编辑" : "返回驾驶舱"}
+        </button>
+      </div>
+    </Card>
+  );
+}
+function Issues({
+  reports,
+  identity,
+  refresh,
+  onEdit,
+}: {
+  reports: any[];
+  identity: Identity;
+  refresh: () => void;
+  onEdit: (r: any) => void;
+}) {
+  const mutation = trpc.ops.updateIssue.useMutation({
+    onSuccess: () => {
+      toast.success("问题处理已更新");
+      refresh();
+    },
+    onError: e => toast.error(e.message),
+  });
+  const issues = reports.filter(r => r.issue);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const active = issues.find((r: any) => r.id === selectedId) || issues[0];
+  return (
+    <Card>
+      <Title
+        title="问题跟进"
+        action={
+          <Badge red={!!issues.length} green={!issues.length}>
+            {issues.length} 条
+          </Badge>
+        }
+      />
+      {issues.length ? (
+        <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
+          <div className="space-y-2">
+            {issues.map((r: any) => (
+              <button
+                key={r.id}
+                onClick={() => setSelectedId(r.id)}
+                className={`w-full rounded-xl border p-3 text-left transition ${active?.id === r.id ? "border-[#e59a67] bg-[#fff0d4]" : "border-[#f1e1d5] bg-[#fffaf6] hover:bg-white"}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <b className="truncate text-xs text-[#604236]">
+                    {r.storeName}
+                  </b>
+                  <Badge
+                    red={r.issueStatus !== "已解决"}
+                    green={r.issueStatus === "已解决"}
+                  >
+                    {r.issueStatus}
+                  </Badge>
+                </div>
+                <div className="mt-1 truncate text-[11px] text-[#8b7567]">
+                  {r.issue}
+                </div>
+                <div className="mt-1 text-[10px] text-[#ad9586]">
+                  {r.reportDate}
+                </div>
+              </button>
+            ))}
+          </div>
+          {active && (
+            <div className="rounded-2xl border border-[#f1e1d5] bg-[#fffaf6] p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <b className="text-sm text-[#604236]">
+                    {active.storeName} · {active.reportDate}
+                  </b>
+                  <div className="mt-1 text-xs text-[#9b8172]">
+                    当前选择的问题详情
+                  </div>
+                </div>
+                <Badge
+                  red={active.issueStatus !== "已解决"}
+                  green={active.issueStatus === "已解决"}
+                >
+                  {active.issueStatus}
+                </Badge>
+              </div>
+              <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-[#71574b]">
+                {active.issue}
+              </p>
+              <p className="mt-2 text-xs text-[#8b7567]">
+                {active.solution ? `措施：${active.solution}` : "暂无处理措施"}
+                {active.solver ? ` · 处理人：${active.solver}` : ""}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(identity.role === "store" ||
+                  identity.role === "manager" ||
+                  identity.role === "admin") && (
+                  <button
+                    onClick={() => onEdit(active)}
+                    className="rounded-lg border border-[#eadbca] bg-white px-3 py-2 text-xs font-bold text-[#8f654f]"
+                  >
+                    <Pencil size={13} className="mr-1 inline" />
+                    编辑问题
+                  </button>
+                )}
+                {identity.role !== "store" && (
+                  <button
+                    onClick={() =>
+                      mutation.mutate({
+                        role: identity.role as "manager" | "admin",
+                        id: active.id,
+                        issueStatus:
+                          active.issueStatus === "已解决" ? "处理中" : "已解决",
+                        solver: identity.name,
+                        solution: active.solution || "已跟进",
+                        deadline: active.deadline || "",
+                      })
+                    }
+                    className="rounded-lg bg-[#6b8dbd] px-3 py-2 text-xs font-bold text-white"
+                  >
+                    {active.issueStatus === "已解决"
+                      ? "重新跟进"
+                      : "标记已解决"}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="py-6 text-center text-sm text-[#a58d7e]">暂无问题</div>
+      )}
+    </Card>
+  );
+}
+function Suggestions({ identity }: { identity: Identity }) {
+  const q = trpc.ops.listSuggestions.useQuery({
+    role: identity.role,
+    storeName: identity.storeName,
+    identityName: identity.name,
+  });
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [editing, setEditing] = useState<any>();
+  const submit = trpc.ops.submitSuggestion.useMutation({
+    onSuccess: () => {
+      toast.success("建议已提交");
+      setTitle("");
+      setContent("");
+      q.refetch();
+    },
+    onError: e => toast.error(e.message),
+  });
+  const edit = trpc.ops.editSuggestion.useMutation({
+    onSuccess: () => {
+      toast.success("建议已更新");
+      setEditing(undefined);
+      q.refetch();
+    },
+    onError: e => toast.error(e.message),
+  });
+  const remove = trpc.ops.deleteSuggestion.useMutation({
+    onSuccess: () => {
+      toast.success("建议已删除");
+      q.refetch();
+    },
+    onError: e => toast.error(e.message),
+  });
+  const manage = trpc.ops.updateSuggestion.useMutation({
+    onSuccess: () => {
+      toast.success("建议处理已保存");
+      q.refetch();
+    },
+    onError: e => toast.error(e.message),
+  });
+  const manager = identity.role !== "store";
+  const [replyDraft, setReplyDraft] = useState<Record<number, string>>({});
+  return (
+    <Card>
+      <Title title="建议中心" action={<Badge>主页查看编辑</Badge>} />
+      {!manager && (
+        <div className="mb-5 grid gap-3 rounded-2xl bg-[#fffaf6] p-4">
+          <Input
+            label="建议标题"
+            value={title}
+            onChange={setTitle}
+            placeholder="例如：优化排班交接"
+          />
+          <textarea
+            value={content}
+            onChange={e => setContent(e.target.value)}
+            placeholder="详细说明"
+            className="min-h-20 rounded-xl border border-[#eadbca] bg-white p-3 text-sm"
+          />
+          <button
+            disabled={!title.trim() || !content.trim()}
+            onClick={() =>
+              submit.mutate({
+                role: "store",
+                identityName: identity.name,
+                storeName: identity.storeName || "",
+                title: title.trim(),
+                content: content.trim(),
+              })
+            }
+            className="flex h-10 items-center justify-center gap-2 rounded-xl bg-[#e47943] text-xs font-bold text-white disabled:opacity-50"
+          >
+            <Send size={14} />
+            提交建议
+          </button>
+        </div>
+      )}
+      <div className="space-y-3">
+        {q.data?.map((item: any) => (
+          <div
+            key={item.id}
+            className="rounded-2xl border border-[#f1e1d5] bg-[#fffaf6] p-4"
+          >
+            <div className="flex justify-between gap-3">
+              <div>
+                <b className="text-sm text-[#58372c]">{item.title}</b>
+                <div className="mt-1 text-[11px] text-[#a18778]">
+                  {item.storeName} · {item.authorName}
+                </div>
+              </div>
+              {!manager && (
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setEditing({ ...item })}
+                    className="p-2 text-[#8f654f]"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                  <button
+                    onClick={() =>
+                      window.confirm("确认删除这条建议吗？") &&
+                      remove.mutate({
+                        role: "store",
+                        identityName: identity.name,
+                        identityStoreName: identity.storeName,
+                        id: item.id,
+                      })
+                    }
+                    className="p-2 text-[#c65044]"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#71574b]">
+              {item.content}
+            </p>
+            <div className="mt-2">
+              <Badge
+                green={item.status === "已采纳" || item.status === "已回复"}
+              >
+                {item.status}
+              </Badge>
+              {item.reply && (
+                <span className="ml-2 text-xs text-[#765848]">
+                  回复：{item.reply}
+                </span>
+              )}
+            </div>
+            {manager && (
+              <div className="mt-3 flex gap-2 border-t border-[#f1e6dc] pt-3">
+                <input
+                  value={replyDraft[item.id] ?? item.reply ?? ""}
+                  onChange={e =>
+                    setReplyDraft(draft => ({
+                      ...draft,
+                      [item.id]: e.target.value,
+                    }))
+                  }
+                  placeholder="填写回复（可选）"
+                  className="h-9 min-w-0 flex-1 rounded-xl border border-[#eadbca] bg-white px-3 text-xs"
+                />
+                <select
+                  defaultValue={item.status}
+                  onChange={e =>
+                    manage.mutate({
+                      role: identity.role as "manager" | "admin",
+                      id: item.id,
+                      status: e.target.value as any,
+                      reply: replyDraft[item.id] ?? item.reply ?? "",
+                    })
+                  }
+                  className="h-9 rounded-xl border border-[#eadbca] bg-white px-2 text-xs"
+                >
+                  <option>待查看</option>
+                  <option>处理中</option>
+                  <option>已采纳</option>
+                  <option>已回复</option>
+                </select>
+                <button
+                  onClick={() =>
+                    manage.mutate({
+                      role: identity.role as "manager" | "admin",
+                      id: item.id,
+                      status: item.status,
+                      reply: replyDraft[item.id] ?? item.reply ?? "",
+                    })
+                  }
+                  className="rounded-xl bg-[#6b8dbd] px-3 text-xs font-bold text-white"
+                >
+                  保存处理
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+        {!q.data?.length && (
+          <div className="py-6 text-center text-sm text-[#a58d7e]">
+            暂无建议
+          </div>
+        )}
+      </div>
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#3f281f]/40 p-4">
+          <div className="w-full max-w-lg rounded-3xl bg-[#f8f0e5] p-5">
+            <Title
+              title="编辑建议"
+              action={
+                <button
+                  onClick={() => setEditing(undefined)}
+                  className="rounded-lg bg-white px-3 py-2 text-xs"
+                >
+                  关闭
+                </button>
+              }
+            />
+            <div className="grid gap-3">
+              <Input
+                label="建议标题"
+                value={editing.title}
+                onChange={v => setEditing({ ...editing, title: v })}
+              />
+              <textarea
+                value={editing.content}
+                onChange={e =>
+                  setEditing({ ...editing, content: e.target.value })
+                }
+                className="min-h-28 rounded-xl border border-[#eadbca] bg-white p-3 text-sm"
+              />
+              <button
+                onClick={() =>
+                  edit.mutate({
+                    role: identity.role,
+                    identityName: identity.name,
+                    identityStoreName: identity.storeName,
+                    id: editing.id,
+                    title: editing.title.trim(),
+                    content: editing.content.trim(),
+                  })
+                }
+                className="h-11 rounded-xl bg-[#e47943] text-sm font-bold text-white"
+              >
+                保存修改
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+function SummaryEditor({ data, identity }: { data: any; identity: Identity }) {
+  const [type, setType] = useState<"日报" | "周报" | "月报">("日报");
+  const [period, setPeriod] = useState(today());
+  const [store, setStore] = useState(identity.storeName || "");
+  const [summary, setSummary] = useState("");
+  const [plan, setPlan] = useState("");
+  const save = trpc.ops.upsertSummary.useMutation({
+    onSuccess: () => {
+      toast.success(`${type}已提交`);
+      setSummary("");
+      setPlan("");
+    },
+    onError: e => toast.error(e.message),
+  });
+  const submit = () => {
+    if (!store) return toast.error("请选择门店");
+    if (!period.trim() || !summary.trim() || !plan.trim()) {
+      return toast.error("请填写周期、总结和下一步计划");
+    }
+    save.mutate({
+      role: identity.role,
+      identityName: identity.name,
+      identityStoreName: identity.storeName,
+      storeName: store,
+      period: period.trim(),
+      type,
+      summary: summary.trim(),
+      plan: plan.trim(),
+    });
+  };
+  const existing = (data.summaries || []).filter(
+    (item: any) =>
+      item.type === type &&
+      item.period === period &&
+      (store === "" || item.storeName === store)
+  );
+  return (
+    <Card>
+      <Title title="日周月总结" action={<Badge>支持提交</Badge>} />
+      <div className="mb-4 rounded-xl bg-[#edf3ff] p-3 text-xs leading-5 text-[#5a76b0]">
+        日报、周报、月报使用同一入口；已提交相同门店和周期的内容会自动更新。
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label>
+          <span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">
+            总结类型
+          </span>
+          <select
+            value={type}
+            onChange={e => {
+              const next = e.target.value as typeof type;
+              setType(next);
+              setPeriod(
+                next === "日报"
+                  ? today()
+                  : next === "月报"
+                    ? today().slice(0, 7)
+                    : today()
+              );
+            }}
+            className="h-10 w-full rounded-xl border border-[#eadbca] bg-white px-3 text-sm"
+          >
+            <option>日报</option>
+            <option>周报</option>
+            <option>月报</option>
+          </select>
+        </label>
+        <Input
+          label={
+            type === "日报" ? "日期" : type === "月报" ? "月份" : "周期标识"
+          }
+          value={period}
+          onChange={setPeriod}
+          type={type === "日报" ? "date" : type === "月报" ? "month" : "text"}
+          placeholder={type === "周报" ? "例如：2026-W39" : ""}
+        />
+        {identity.role === "store" ? (
+          <Input label="门店" value={store} onChange={setStore} />
+        ) : (
+          <label>
+            <span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">
+              门店
+            </span>
+            <select
+              value={store}
+              onChange={e => setStore(e.target.value)}
+              className="h-10 w-full rounded-xl border border-[#eadbca] bg-white px-3 text-sm"
+            >
+              <option value="">请选择门店</option>
+              {data.stores?.map((s: any) => (
+                <option key={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <label>
+          <span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">
+            本期总结
+          </span>
+          <textarea
+            value={summary}
+            onChange={e => setSummary(e.target.value)}
+            placeholder="填写本期经营情况、问题和亮点"
+            className="min-h-24 w-full rounded-xl border border-[#eadbca] bg-white p-3 text-sm"
+          />
+        </label>
+        <label>
+          <span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">
+            下一步计划
+          </span>
+          <textarea
+            value={plan}
+            onChange={e => setPlan(e.target.value)}
+            placeholder="填写下一步行动计划"
+            className="min-h-24 w-full rounded-xl border border-[#eadbca] bg-white p-3 text-sm"
+          />
+        </label>
+      </div>
+      {existing[0] && (
+        <p className="mt-3 text-xs text-[#8b7567]">
+          该门店该周期已有总结，提交后将覆盖更新。
+        </p>
+      )}
+      <button
+        onClick={submit}
+        disabled={save.isPending}
+        className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#e47943] text-sm font-bold text-white disabled:opacity-50"
+      >
+        <Send size={16} />
+        {save.isPending ? "提交中…" : `提交${type}`}
+      </button>
+    </Card>
+  );
+}
+function Summary({ data, identity }: { data: any; identity: Identity }) {
+  const d = new Date();
+  d.setDate(d.getDate() - 6);
+  const [start, setStart] = useState(d.toISOString().slice(0, 10));
+  const [end, setEnd] = useState(today());
+  const [store, setStore] = useState(identity.storeName || "全部门店");
+  const invalidRange = start > end;
+  const rows = invalidRange
+    ? []
+    : (data.reports || []).filter(
+        (r: any) =>
+          r.reportDate >= start &&
+          r.reportDate <= end &&
+          (store === "全部门店" || r.storeName === store)
+      );
+  return (
+    <div className="space-y-5">
+      <div>
+        <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#bd8462]">
+          CUSTOM RANGE
+        </div>
+        <h1 className="mt-1 text-2xl font-extrabold text-[#4c2d24]">
+          汇总查询
+        </h1>
+        <p className="mt-1 text-sm text-[#977a69]">
+          按起止日期自定义查看日报汇总，并提交日、周、月总结。
+        </p>
+      </div>
+      <SummaryEditor data={data} identity={identity} />
+      <Card>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Input
+            label="开始日期"
+            value={start}
+            onChange={setStart}
+            type="date"
+          />
+          <Input label="结束日期" value={end} onChange={setEnd} type="date" />
+          <label>
+            <span className="mb-1.5 block text-[11px] font-semibold text-[#75594b]">
+              门店
+            </span>
+            <select
+              disabled={identity.role === "store"}
+              value={store}
+              onChange={e => setStore(e.target.value)}
+              className="h-10 w-full rounded-xl border border-[#eadbca] bg-white px-3 text-sm"
+            >
+              <option>全部门店</option>
+              {data.stores?.map((s: any) => (
+                <option key={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {invalidRange && (
+          <p className="mt-3 text-xs font-semibold text-[#c65044]">
+            结束日期不能早于开始日期，请重新选择。
+          </p>
+        )}
+      </Card>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          [
+            "实收",
+            money(rows.reduce((s: number, r: any) => s + num(r.revenue), 0)),
+          ],
+          [
+            "报损",
+            money(
+              rows.reduce((s: number, r: any) => s + num(r.wasteAmount), 0)
+            ),
+          ],
+          [
+            "客流",
+            amount(rows.reduce((s: number, r: any) => s + num(r.traffic), 0)),
+          ],
+          ["问题", String(rows.filter((r: any) => r.issue).length)],
+        ].map(([label, value]) => (
+          <Card key={label}>
+            <div className="text-xs text-[#9b8172]">区间{label}</div>
+            <b className="mt-2 block text-xl text-[#5d382b]">{value}</b>
+          </Card>
+        ))}
+      </div>
+      <Card>
+        <Title title="日明细" action={<Badge>{rows.length} 条日报</Badge>} />
+        {rows.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px] text-left text-xs">
+              <thead className="text-[#a18778]">
+                <tr>
+                  <th className="pb-2">日期</th>
+                  <th>门店</th>
+                  <th>实收</th>
+                  <th>客流</th>
+                  <th>报损</th>
+                  <th>问题</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r: any) => (
+                  <tr
+                    key={r.id}
+                    className="border-t border-[#f1e6dc] text-[#68483a]"
+                  >
+                    <td className="py-3">{r.reportDate}</td>
+                    <td>{r.storeName}</td>
+                    <td>{money(r.revenue)}</td>
+                    <td>{amount(r.traffic)}</td>
+                    <td>{money(r.wasteAmount)}</td>
+                    <td>
+                      {r.issue ? (
+                        <Badge red>{r.issueStatus}</Badge>
+                      ) : (
+                        <Badge green>无</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="py-8 text-center text-sm text-[#a58d7e]">
+            该日期区间暂无数据
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+function OpeningStores({
+  data,
+  identity,
+  refresh,
+}: {
+  data: any;
+  identity: Identity;
+  refresh: () => void;
+}) {
+  const canEdit = identity.role === "manager" || identity.role === "admin";
+  const stores = (data.stores || []).filter(
+    (s: any) => s.status !== "正常运营"
+  );
+  const [editing, setEditing] = useState<any>(null);
+  const mutation = trpc.ops.upsertNode.useMutation({
+    onSuccess: () => {
+      toast.success("筹备节点已更新");
+      setEditing(null);
+      refresh();
+    },
+    onError: e => toast.error(e.message),
+  });
+  return (
+    <Card>
+      <Title
+        title="筹备 / 装修中门店"
+        action={<Badge>{stores.length} 家</Badge>}
+      />
+      {stores.length ? (
+        <div className="grid gap-3 md:grid-cols-2">
+          {stores.map((store: any) => {
+            const nodes = (data.openingNodes || []).filter(
+              (node: any) => node.storeName === store.name
+            );
+            return (
+              <div
+                key={store.id}
+                className="rounded-2xl border border-[#e7dfd7] bg-[#fffaf6] p-4"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <b className="text-sm text-[#58372c]">{store.name}</b>
+                    <div className="mt-1 text-xs text-[#9b8172]">
+                      {store.status} · 开业 {store.openingDate || "待定"}
+                    </div>
+                  </div>
+                  <Badge>
+                    {nodes.filter((n: any) => n.completed).length}/
+                    {nodes.length} 已完成
+                  </Badge>
+                </div>
+                {nodes.length ? (
+                  <div className="mt-3 space-y-2">
+                    {nodes.map((node: any) => (
+                      <div key={node.id} className="rounded-xl bg-white p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <b className="block truncate text-xs text-[#68483a]">
+                              {node.nodeName}
+                            </b>
+                            <span className="text-[10px] text-[#a18778]">
+                              {node.planDate} · {node.owner}
+                            </span>
+                          </div>
+                          <Badge
+                            green={node.status === "已完成"}
+                            red={node.status === "未开始"}
+                          >
+                            {node.status}
+                          </Badge>
+                        </div>
+                        {canEdit && (
+                          <button
+                            onClick={() => setEditing({ ...node })}
+                            className="mt-2 rounded-lg border border-[#eadbca] bg-[#fffaf6] px-3 py-1.5 text-[11px] font-bold text-[#8f654f]"
+                          >
+                            <Pencil size={12} className="mr-1 inline" />
+                            编辑节点
+                          </button>
+                        )}
+                        {editing?.id === node.id && (
+                          <div className="mt-3 grid gap-2 border-t border-[#f1e6dc] pt-3">
+                            <Input
+                              label="节点名称"
+                              value={editing.nodeName}
+                              onChange={v =>
+                                setEditing({ ...editing, nodeName: v })
+                              }
+                            />
+                            <div className="grid gap-2 sm:grid-cols-2">
+                              <Input
+                                label="计划日期"
+                                value={editing.planDate}
+                                onChange={v =>
+                                  setEditing({ ...editing, planDate: v })
+                                }
+                                type="date"
+                              />
+                              <Input
+                                label="负责人"
+                                value={editing.owner}
+                                onChange={v =>
+                                  setEditing({ ...editing, owner: v })
+                                }
+                              />
+                            </div>
+                            <select
+                              value={editing.status}
+                              onChange={e =>
+                                setEditing({
+                                  ...editing,
+                                  status: e.target.value,
+                                  completed: e.target.value === "已完成",
+                                })
+                              }
+                              className="h-10 rounded-xl border border-[#eadbca] bg-white px-3 text-xs"
+                            >
+                              <option>未开始</option>
+                              <option>进行中</option>
+                              <option>已完成</option>
+                            </select>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() =>
+                                  mutation.mutate({
+                                    role: identity.role as "manager" | "admin",
+                                    id: editing.id,
+                                    storeName: editing.storeName,
+                                    nodeName: editing.nodeName.trim(),
+                                    planDate: editing.planDate,
+                                    status: editing.status,
+                                    owner:
+                                      editing.owner.trim() || identity.name,
+                                    completed: editing.status === "已完成",
+                                  })
+                                }
+                                className="rounded-xl bg-[#6b8dbd] px-3 py-2 text-xs font-bold text-white"
+                              >
+                                保存节点
+                              </button>
+                              <button
+                                onClick={() => setEditing(null)}
+                                className="rounded-xl bg-[#f1e4d8] px-3 py-2 text-xs font-bold text-[#987d6e]"
+                              >
+                                取消
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-3 text-xs text-[#a18778]">
+                    暂无筹备节点，可在管理工具中新增。
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="py-6 text-center text-sm text-[#a58d7e]">
+          暂无筹备或装修中门店
+        </div>
+      )}
+    </Card>
+  );
+}
+function Dashboard({
+  data,
+  identity,
+  refresh,
+  edit,
+}: {
+  data: any;
+  identity: Identity;
+  refresh: () => void;
+  edit: (r?: any) => void;
+}) {
+  const visible =
+    identity.role === "store"
+      ? (data.reports || []).filter(
+          (r: any) => r.storeName === identity.storeName
+        )
+      : data.reports || [];
+  const recent = visible.slice(0, 6);
+  const todayRows = visible.filter((r: any) => r.reportDate === today());
+  const [formOpen, setFormOpen] = useState(false);
+  const [overlay, setOverlay] = useState<"issues" | "suggestions" | null>(null);
+  return (
+    <div className="space-y-5">
+      <div>
+        <div className="text-[10px] font-bold uppercase tracking-[.18em] text-[#bd8462]">
+          ONEIRA OPERATIONS HUB
+        </div>
+        <h1 className="mt-1 text-2xl font-extrabold text-[#4c2d24]">驾驶舱</h1>
+        <p className="mt-1 text-sm text-[#977a69]">
+          日周月统一工作台：从这里打卡、查看和处理。
+        </p>
+      </div>
+      {formOpen && (
+        <ReportForm
+          identity={identity}
+          stores={data.stores || []}
+          onSaved={() => {
+            setFormOpen(false);
+            refresh();
+          }}
+          onCancel={() => setFormOpen(false)}
+        />
+      )}
+      {!formOpen && (
+        <Card>
+          <Title
+            title="今天做什么"
+            action={<Badge>{todayRows.length} 条今日日报</Badge>}
+          />
+          <div className="grid gap-3 sm:grid-cols-3">
+            <button
+              onClick={() => setFormOpen(true)}
+              className="rounded-2xl bg-[#fff0d4] p-4 text-left"
+            >
+              <ClipboardCheck className="text-[#c2693d]" size={22} />
+              <b className="mt-3 block text-sm text-[#704434]">去打卡填日报</b>
+              <span className="mt-1 block text-xs text-[#a27a64]">
+                新增或补填指定日期
+              </span>
+            </button>
+            <button
+              onClick={() => setOverlay("issues")}
+              className="rounded-2xl bg-[#fff0ee] p-4 text-left"
+            >
+              <AlertTriangle className="text-[#c65044]" size={22} />
+              <b className="mt-3 block text-sm text-[#704434]">
+                查看并处理问题
+              </b>
+              <span className="mt-1 block text-xs text-[#a27a64]">
+                主页直接编辑跟进
+              </span>
+            </button>
+            <button
+              onClick={() => setOverlay("suggestions")}
+              className="rounded-2xl bg-[#edf3ff] p-4 text-left"
+            >
+              <MessageCircleWarning className="text-[#5a76b0]" size={22} />
+              <b className="mt-3 block text-sm text-[#704434]">查看建议中心</b>
+              <span className="mt-1 block text-xs text-[#a27a64]">
+                查看、编辑、回复一处完成
+              </span>
+            </button>
+          </div>
+        </Card>
+      )}
+      <Card>
+        <Title title="日周月合并概览" action={<Badge>自动汇总</Badge>} />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div>
+            <span className="text-xs text-[#9b8172]">近 7 日实收</span>
+            <b className="mt-1 block text-xl text-[#5d382b]">
+              {money(
+                visible
+                  .filter(
+                    (r: any) =>
+                      r.reportDate >=
+                      new Date(Date.now() - 6 * 86400000)
+                        .toISOString()
+                        .slice(0, 10)
+                  )
+                  .reduce((s: number, r: any) => s + num(r.revenue), 0)
+              )}
+            </b>
+          </div>
+          <div>
+            <span className="text-xs text-[#9b8172]">日报记录</span>
+            <b className="mt-1 block text-xl text-[#5d382b]">
+              {visible.length}
+            </b>
+          </div>
+          <div>
+            <span className="text-xs text-[#9b8172]">客流</span>
+            <b className="mt-1 block text-xl text-[#5d382b]">
+              {amount(
+                visible.reduce((s: number, r: any) => s + num(r.traffic), 0)
+              )}
+            </b>
+          </div>
+          <div>
+            <span className="text-xs text-[#9b8172]">问题</span>
+            <b className="mt-1 block text-xl text-[#c65044]">
+              {visible.filter((r: any) => r.issue).length}
+            </b>
+          </div>
+        </div>
+        <div className="mt-4 rounded-xl bg-[#fff6e6] p-3 text-xs leading-5 text-[#a66b31]">
+          周报、月报由日报自动汇总，日周月总结可在“汇总查询”中提交。
+        </div>
+      </Card>
+      <Card>
+        <Title title="最近日报" action={<Badge>{recent.length} 条</Badge>} />
+        {recent.map((r: any) => (
+          <div
+            key={r.id}
+            className="flex items-center justify-between gap-3 border-t border-[#f1e6dc] py-3 first:border-0"
+          >
+            <div>
+              <b className="text-sm text-[#604236]">
+                {r.storeName} · {r.reportDate}
+              </b>
+              <div className="mt-1 text-xs text-[#9b8172]">
+                实收 {money(r.revenue)} · 客流 {amount(r.traffic)}
+                {r.issue ? " · 有问题" : ""}
+              </div>
+            </div>
+            <button
+              onClick={() => edit(r)}
+              className="rounded-lg border border-[#eadbca] bg-white px-3 py-2 text-xs font-bold text-[#8f654f]"
+            >
+              <Pencil size={13} className="mr-1 inline" />
+              编辑
+            </button>
+          </div>
+        ))}
+      </Card>
+      <OpeningStores data={data} identity={identity} refresh={refresh} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <button
+          id="issues"
+          onClick={() => setOverlay("issues")}
+          className="rounded-2xl border border-[#f1d9d3] bg-[#fff5f2] p-4 text-left transition hover:-translate-y-0.5"
+        >
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={18} className="text-[#c65044]" />
+            <b className="text-sm text-[#704434]">问题处理</b>
+            <Badge
+              red={
+                visible.filter(
+                  (r: any) => r.issue && r.issueStatus !== "已解决"
+                ).length > 0
+              }
+            >
+              {visible.filter((r: any) => r.issue).length} 条问题
+            </Badge>
+          </div>
+          <p className="mt-2 text-xs text-[#a27a64]">点击弹窗选择问题并处理</p>
+        </button>
+        <button
+          id="suggestions"
+          onClick={() => setOverlay("suggestions")}
+          className="rounded-2xl border border-[#dbe5f7] bg-[#f3f7ff] p-4 text-left transition hover:-translate-y-0.5"
+        >
+          <div className="flex items-center gap-2">
+            <MessageCircleWarning size={18} className="text-[#5a76b0]" />
+            <b className="text-sm text-[#704434]">建议中心</b>
+            <Badge>
+              {identity.role === "store" ? "查看 / 编辑" : "查看 / 回复"}
+            </Badge>
+          </div>
+          <p className="mt-2 text-xs text-[#7d91b4]">
+            点击弹窗查看建议、编辑或回复
+          </p>
+        </button>
+      </div>
+      {overlay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#3f281f]/45 p-3 sm:p-6">
+          <button
+            aria-label="关闭弹窗"
+            onClick={() => setOverlay(null)}
+            className="absolute inset-0"
+          />
+          <div className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-[#f8f0e5] p-3 shadow-2xl sm:p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <b className="text-lg text-[#58372c]">
+                {overlay === "issues" ? "问题处理" : "建议中心"}
+              </b>
+              <button
+                onClick={() => setOverlay(null)}
+                className="rounded-xl bg-white px-4 py-2 text-xs font-bold text-[#987d6e]"
+              >
+                关闭
+              </button>
+            </div>
+            {overlay === "issues" ? (
+              <Issues
+                reports={visible}
+                identity={identity}
+                refresh={refresh}
+                onEdit={r => {
+                  setOverlay(null);
+                  edit(r);
+                  setFormOpen(false);
+                }}
+              />
+            ) : (
+              <Suggestions identity={identity} />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+function Main({
+  identity,
+  logout,
+}: {
+  identity: Identity;
+  logout: () => void;
+}) {
+  const query = trpc.ops.bootstrap.useQuery(
+    { role: identity.role, storeName: identity.storeName },
+    { retry: false }
+  );
+  const refresh = () => query.refetch();
+  const [section, setSection] = useState<"dashboard" | "summary">("dashboard");
+  const [editing, setEditing] = useState<any>(null);
+  if (query.isLoading)
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f8f0e5]">
+        <Loader2 className="animate-spin text-[#e47943]" />
+      </div>
+    );
+  if (query.error || !query.data)
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f8f0e5] p-5">
+        <Card className="text-center">
+          <CloudOff className="mx-auto text-[#c65044]" />
+          <p className="mt-3 text-sm">云端数据暂时无法加载</p>
+          <button
+            onClick={refresh}
+            className="mt-4 rounded-xl bg-[#e47943] px-4 py-2 text-xs font-bold text-white"
+          >
+            重新加载
+          </button>
+        </Card>
+      </div>
+    );
+  const data = query.data as any;
+  return (
+    <div className="app-shell min-h-screen">
+      <header className="sticky top-0 z-30 border-b border-[#eadbce]/80 bg-[#f8f0e5]/90 backdrop-blur-xl">
+        <div className="app-container !pb-0">
+          <div className="flex h-[68px] items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f29a52] text-xl text-white">
+                ✦
+              </div>
+              <div>
+                <b className="text-sm text-[#58372c]">
+                  ONEIRA{" "}
+                  <span className="font-medium text-[#b97a5a]">梦面包</span>
+                </b>
+                <div className="text-[10px] text-[#a18778]">
+                  {section === "dashboard" ? "驾驶舱" : "汇总查询"}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="hidden text-[11px] text-[#6a9475] sm:block">
+                已同步
+              </span>
+              <button
+                onClick={refresh}
+                className="rounded-full p-2 text-[#a17f6c]"
+              >
+                <RefreshCw size={16} />
+              </button>
+              <button
+                onClick={logout}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#6b4435] text-white"
+              >
+                <UserRound size={15} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+      <main className="app-container pt-5">
+        {section === "dashboard" ? (
+          <Dashboard
+            data={data}
+            identity={identity}
+            refresh={refresh}
+            edit={r => setEditing(r)}
+          />
+        ) : (
+          <Summary data={data} identity={identity} />
+        )}
+        {editing !== null && (
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-[#3f281f]/40 p-4">
+            <div className="mx-auto max-w-3xl pt-4">
+              <ReportForm
+                identity={identity}
+                report={editing}
+                stores={data.stores || []}
+                onSaved={() => {
+                  setEditing(null);
+                  refresh();
+                }}
+                onCancel={() => setEditing(null)}
+              />
+            </div>
+          </div>
+        )}
+      </main>
+      <nav className="safe-bottom fixed bottom-0 left-0 right-0 z-40 border-t border-[#eadbce] bg-[#fffaf5]/95 backdrop-blur-xl">
+        <div className="mx-auto grid max-w-[420px] grid-cols-2 px-2 py-2">
+          <button
+            onClick={() => {
+              setSection("dashboard");
+              setEditing(null);
+            }}
+            className={`flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-bold ${section === "dashboard" ? "bg-[#fff0d4] text-[#bc6437]" : "text-[#a68b7b]"}`}
+          >
+            <LayoutDashboard size={18} />
+            <span>驾驶舱</span>
+          </button>
+          <button
+            onClick={() => setSection("summary")}
+            className={`flex flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-bold ${section === "summary" ? "bg-[#fff0d4] text-[#bc6437]" : "text-[#a68b7b]"}`}
+          >
+            <BarChart3 size={18} />
+            <span>汇总查询</span>
+          </button>
+        </div>
+      </nav>
+    </div>
+  );
+}
+export default function Home() {
+  const [identity, setIdentity] = useState<Identity | null>(() => {
+    try {
+      const s = localStorage.getItem(IDENTITY_KEY);
+      return s ? JSON.parse(s) : null;
+    } catch {
+      return null;
+    }
+  });
+  const enter = (i: Identity) => {
+    localStorage.setItem(IDENTITY_KEY, JSON.stringify(i));
+    setIdentity(i);
+  };
+  const logout = () => {
+    localStorage.removeItem(IDENTITY_KEY);
+    setIdentity(null);
+  };
+  return identity ? (
+    <Main identity={identity} logout={logout} />
+  ) : (
+    <Gate onEnter={enter} />
+  );
+}
