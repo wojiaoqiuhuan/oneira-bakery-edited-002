@@ -124,3 +124,15 @@ input, textarea, select { width: 100%; color: var(--ink); border: 1px solid var(
 .management-row-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; min-width: 0; }
 .management-row-actions .management-target { overflow: hidden; max-width: 110px; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 780px) { .management-row-actions { grid-column: 1 / -1; justify-content: space-between; } .management-row-actions .management-target { max-width: none; } }
+
+.access-error { padding: 10px 12px; color: #a9433a; background: #fff0ee; border: 1px solid #f2c7c1; border-radius: 10px; font-size: 12px; }
+.enter-button:disabled { cursor: not-allowed; opacity: .5; transform: none; }
+.password-management { margin-top: 14px; }
+.password-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; align-items: center; gap: 9px; padding: 9px 0; border-top: 1px solid #eee5de; }
+.password-row > div { min-width: 0; }
+.password-row strong, .password-row span { display: block; }
+.password-row strong { font-size: 12px; }
+.password-row span { margin-top: 3px; color: var(--muted); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.password-row input { min-width: 0; }
+.password-store-list { display: grid; gap: 2px; }
+@media (max-width: 780px) { .password-row { grid-template-columns: minmax(0, 1fr) auto; } .password-row input { grid-column: 1; } .password-row button { grid-column: 2; grid-row: 1 / span 2; } }

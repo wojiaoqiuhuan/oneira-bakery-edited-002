@@ -170,7 +170,9 @@ class SDKServer {
     return this.signSession(
       {
         openId,
-        appId: ENV.appId,
+        // PIN access is also used in standalone deployments where APP_ID is not configured.
+        // Keep the signed payload structurally valid so protected procedures can verify it.
+        appId: ENV.appId || "oneira-pin",
         name: options.name || "",
       },
       options

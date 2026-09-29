@@ -4,8 +4,9 @@ import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
-import { getDb, ensureOneiraSeedData } from "./db";
+import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { getDb, ensureOneiraSeedData, getUserByOpenId, upsertUser } from "./db";
+import { sdk } from "./_core/sdk";
 import { workspaceRouter } from "./routers.workspace";
 import {
   appSettings,
@@ -59,12 +60,43 @@ const ensureManagerPin = async (db: Awaited<ReturnType<typeof dbOrThrow>>) => {
     .values({ settingKey: "managerPin", settingValue: "1688" });
   return "1688";
 };
+const ensureAdminPin = async (db: Awaited<ReturnType<typeof dbOrThrow>>) => {
+  const existing = await db.select({ settingValue: appSettings.settingValue }).from(appSettings).where(eq(appSettings.settingKey, "adminPin")).limit(1);
+  if (existing[0]) return existing[0].settingValue;
+  await db.insert(appSettings).values({ settingKey: "adminPin", settingValue: "1688" });
+  return "1688";
+};
 
 export const appRouter = router({
   system: systemRouter,
   workspace: workspaceRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    loginWithPin: publicProcedure.input(z.object({ role: z.enum(["admin", "operator", "store"]), pin: z.string().regex(/^\d{4,12}$/, "口令需为 4-12 位数字"), storeName: z.string().optional() })).mutation(async ({ ctx, input }) => {
+      await ensureOneiraSeedData();
+      const db = await dbOrThrow();
+      let openId = "oneira-pin-admin";
+      let name = "系统管理员";
+      let storeName: string | null = null;
+      if (input.role === "admin") {
+        if (input.pin !== await ensureAdminPin(db)) throw new TRPCError({ code: "UNAUTHORIZED", message: "管理员口令不正确" });
+      } else if (input.role === "operator") {
+        openId = "oneira-pin-operator";
+        name = "运营中心";
+        if (input.pin !== await ensureManagerPin(db)) throw new TRPCError({ code: "UNAUTHORIZED", message: "运营口令不正确" });
+      } else {
+        if (!input.storeName) throw new TRPCError({ code: "BAD_REQUEST", message: "请选择门店" });
+        const [store] = await db.select({ name: stores.name, managerName: stores.managerName, loginPin: stores.loginPin }).from(stores).where(eq(stores.name, input.storeName)).limit(1);
+        if (!store || input.pin !== store.loginPin) throw new TRPCError({ code: "UNAUTHORIZED", message: "门店口令不正确" });
+        openId = `oneira-pin-store-${store.name}`;
+        name = store.managerName;
+        storeName = store.name;
+      }
+      await upsertUser({ openId, name, role: input.role, storeName, loginMethod: "pin", lastSignedIn: new Date() });
+      const token = await sdk.createSessionToken(openId, { name });
+      ctx.res.cookie(COOKIE_NAME, token, getSessionCookieOptions(ctx.req));
+      return getUserByOpenId(openId);
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -96,11 +128,13 @@ export const appRouter = router({
       )
       .mutation(async ({ input }) => {
         const db = await dbOrThrow();
-        if (input.role === "admin")
+        if (input.role === "admin") {
+          const adminPin = await ensureAdminPin(db);
           return {
-            success: input.pin === "1688",
-            message: input.pin === "1688" ? undefined : "管理员口令不正确",
+            success: input.pin === adminPin,
+            message: input.pin === adminPin ? undefined : "管理员口令不正确",
           };
+        }
         if (input.role === "manager") {
           const managerPin = await ensureManagerPin(db);
           return {
@@ -118,10 +152,11 @@ export const appRouter = router({
         const success = !!store[0] && input.pin === store[0].loginPin;
         return { success, message: success ? undefined : "门店口令不正确" };
       }),
-    accessSettings: publicProcedure
+    accessSettings: adminProcedure
       .input(z.object({ role: z.literal("admin") }))
       .query(async () => {
         const db = await dbOrThrow();
+        const adminPin = await ensureAdminPin(db);
         const managerPin = await ensureManagerPin(db);
         const storeRows = await db
           .select({
@@ -132,9 +167,9 @@ export const appRouter = router({
           })
           .from(stores)
           .orderBy(stores.name);
-        return { managerPin, stores: storeRows };
+        return { adminPin, managerPin, stores: storeRows };
       }),
-    updateManagerPin: publicProcedure
+    updateAdminPin: adminProcedure
       .input(
         z.object({
           role: z.literal("admin"),
@@ -143,14 +178,22 @@ export const appRouter = router({
       )
       .mutation(async ({ input }) => {
         const db = await dbOrThrow();
-        await ensureManagerPin(db);
+        await ensureAdminPin(db);
         await db
           .update(appSettings)
           .set({ settingValue: input.pin })
-          .where(eq(appSettings.settingKey, "managerPin"));
+          .where(eq(appSettings.settingKey, "adminPin"));
         return { success: true };
       }),
-    updateStorePin: publicProcedure
+    updateManagerPin: adminProcedure
+      .input(z.object({ role: z.literal("admin"), pin: z.string().regex(/^\d{4,12}$/, "口令需为 4-12 位数字") }))
+      .mutation(async ({ input }) => {
+        const db = await dbOrThrow();
+        await ensureManagerPin(db);
+        await db.update(appSettings).set({ settingValue: input.pin }).where(eq(appSettings.settingKey, "managerPin"));
+        return { success: true };
+      }),
+    updateStorePin: adminProcedure
       .input(
         z.object({
           role: z.literal("admin"),
@@ -385,7 +428,7 @@ export const appRouter = router({
         };
       }),
 
-    upsertReport: publicProcedure
+    upsertReport: protectedProcedure
       .input(
         z.object({
           role: z.enum(["manager", "admin", "store"]),
@@ -414,21 +457,21 @@ export const appRouter = router({
           nextPlan: z.string().optional(),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const db = await dbOrThrow();
-        if (
-          !canStoreAccess(input.role, input.identityStoreName, input.storeName)
-        )
+        const sessionRole = ctx.user.role === "operator" ? "manager" : ctx.user.role;
+        const sessionStoreName = ctx.user.storeName || undefined;
+        if (!canStoreAccess(sessionRole, sessionStoreName, input.storeName))
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "店长只能查看和填报绑定门店",
           });
         const reporter =
-          input.role === "manager"
+          sessionRole === "manager"
             ? "运营经理"
-            : input.role === "admin"
+            : sessionRole === "admin"
               ? "管理员"
-              : input.identityName;
+              : ctx.user.name || "未命名店长";
         const values = {
           storeName: input.storeName,
           reportDate: input.reportDate,

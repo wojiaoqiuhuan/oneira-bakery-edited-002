@@ -62,7 +62,7 @@ export default function App() {
   const enter = (next: Session) => { setSession(next); setView("overview"); window.history.replaceState({}, "", next.role === "admin" ? "/admin" : next.role === "operator" ? "/operations" : "/store"); };
   const logout = async () => { if (auth.isAuthenticated) { try { await auth.logout(); } catch {} } setSession(null); setView("overview"); window.history.replaceState({}, "", "/"); };
   const activeSession = realSession || session;
-  if (auth.loading || (auth.isAuthenticated && remoteMe.isLoading)) return <div className="access-page"><div className="access-card"><span className="eyebrow">ONEIRA OPS</span><h2>正在验证工作台权限</h2><p>正在读取真实账户、角色和门店范围，请稍候。</p></div></div>;
+  if (auth.loading || (auth.isAuthenticated && remoteMe.isLoading)) return <div className="access-page"><div className="access-card"><span className="eyebrow">ONEIRA OPS</span><h2>正在验证工作台权限</h2><p>正在读取口令会话、角色和门店范围，请稍候。</p></div></div>;
   if (!activeSession) return <AccessPage onEnter={enter} />;
   return <AppShell session={activeSession} view={view} onViewChange={setView} onLogout={logout} flash={flash}>
     {activeSession.role === "admin" && <AdminWorkspace data={data} view={view} onChange={setData} onFlash={showFlash} onNavigate={setView} />}
