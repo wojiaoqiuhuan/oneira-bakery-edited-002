@@ -9,6 +9,11 @@ import AdminWorkspace from "./pages/AdminWorkspace";
 import OperationsWorkspace from "./pages/OperationsWorkspace";
 import StoreWorkspace from "./pages/StoreWorkspace";
 
+const parseCustomMetrics = (value: string | null | undefined): Record<string, string> => {
+  if (!value) return {};
+  try { const parsed = JSON.parse(value); return parsed && typeof parsed === "object" ? parsed : {}; } catch { return {}; }
+};
+
 export default function App() {
   const auth = useAuth();
   const remoteMe = trpc.workspace.me.useQuery(undefined, { enabled: auth.isAuthenticated, retry: false });
@@ -42,6 +47,7 @@ export default function App() {
       wasteAmount: report.wasteAmount,
       tastingAmount: report.tastingAmount || 0,
       praiseCount: report.praiseCount || 0,
+      customFields: parseCustomMetrics(report.customMetrics),
       todayDone: report.todayDone || "",
       tomorrowPlan: report.nextPlan || "",
       issue: report.issue || "",

@@ -57,6 +57,7 @@ export const dailyReports = mysqlTable(
     storedCount: double("storedCount").default(0).notNull(),
     storedAmount: double("storedAmount").default(0).notNull(),
     praiseCount: double("praiseCount").default(0).notNull(),
+    customMetrics: text("customMetrics"),
     issue: text("issue"),
     issueStatus: mysqlEnum("issueStatus", ["待处理", "处理中", "已解决"])
       .default("待处理")

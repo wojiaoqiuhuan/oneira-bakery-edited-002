@@ -26,6 +26,7 @@ const reportInput = z.object({
   wasteAmount: z.number().nonnegative().default(0),
   tastingAmount: z.number().nonnegative().default(0),
   praiseCount: z.number().nonnegative().default(0),
+  customFields: z.record(z.string(), z.string()).default({}),
   issue: z.string().max(5000).optional(),
   todayDone: z.string().max(5000).optional(),
   nextPlan: z.string().max(5000).optional(),
@@ -73,7 +74,8 @@ export const workspaceRouter = router({
     const db = await dbOrThrow();
     const existing = await db.select({ id: dailyReports.id }).from(dailyReports).where(and(eq(dailyReports.storeName, input.storeName), eq(dailyReports.reportDate, input.reportDate))).limit(1);
     if (existing[0]) throw new TRPCError({ code: "CONFLICT", message: "该门店当天已经有日报" });
-    const [created] = await db.insert(dailyReports).values({ ...input, reporter: ctx.user.name || "未命名用户", submitted: true, issueStatus: input.issue ? "待处理" : "已解决" }).$returningId();
+    const { customFields, ...reportValues } = input;
+    const [created] = await db.insert(dailyReports).values({ ...reportValues, customMetrics: JSON.stringify(customFields), reporter: ctx.user.name || "未命名用户", submitted: true, issueStatus: input.issue ? "待处理" : "已解决" }).$returningId();
     await writeAudit(db, ctx.user, "提交日报", `${input.storeName} · ${input.reportDate}`, `实收 ${input.revenue}`);
     return { id: created.id };
   }),
@@ -84,7 +86,8 @@ export const workspaceRouter = router({
     if (!old) throw new TRPCError({ code: "NOT_FOUND", message: "日报不存在" });
     canEditStoreRecord(ctx.user, old.storeName, old.reporter);
     if (input.data.storeName && input.data.storeName !== old.storeName) requireRole(ctx.user, ["admin", "operator"]);
-    await db.update(dailyReports).set({ ...input.data, issueStatus: input.data.issue !== undefined ? (input.data.issue ? "待处理" : "已解决") : undefined }).where(eq(dailyReports.id, input.id));
+    const { customFields, ...reportValues } = input.data;
+    await db.update(dailyReports).set({ ...reportValues, ...(customFields ? { customMetrics: JSON.stringify(customFields) } : {}), issueStatus: input.data.issue !== undefined ? (input.data.issue ? "待处理" : "已解决") : undefined }).where(eq(dailyReports.id, input.id));
     return { success: true } as const;
   }),
 
