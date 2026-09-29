@@ -33,6 +33,7 @@ const navByRole: Record<Role, { id: WorkspaceView; label: string; icon: ReactNod
     { id: "overview", label: "总览", icon: <LayoutDashboard size={17} /> },
     { id: "reports", label: "业务数据", icon: <ClipboardList size={17} /> },
     { id: "templates", label: "日报模板", icon: <FileCog size={17} /> },
+    { id: "management", label: "权限与门店", icon: <UsersRound size={17} /> },
     { id: "calendar", label: "特殊日期", icon: <CalendarDays size={17} /> },
     { id: "audit", label: "审计记录", icon: <History size={17} /> },
   ],

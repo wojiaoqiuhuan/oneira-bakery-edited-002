@@ -3,6 +3,7 @@ export type WorkspaceView =
   | "overview"
   | "reports"
   | "templates"
+  | "management"
   | "collaboration"
   | "calendar"
   | "retrospectives"
