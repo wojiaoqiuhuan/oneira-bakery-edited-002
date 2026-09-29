@@ -50,7 +50,7 @@ export const workspaceRouter = router({
 
   stores: protectedProcedure.query(async ({ ctx }) => {
     const db = await dbOrThrow();
-    const rows = await db.select({ id: stores.id, name: stores.name, managerName: stores.managerName, status: stores.status }).from(stores).orderBy(stores.name);
+    const rows = await db.select({ id: stores.id, name: stores.name, managerName: stores.managerName, monthlyTargetWan: stores.monthlyTargetWan, status: stores.status, openingDate: stores.openingDate }).from(stores).orderBy(stores.name);
     return getAppRole(ctx.user) === "store" ? rows.filter(row => row.name === ctx.user.storeName) : rows;
   }),
 
@@ -262,8 +262,11 @@ export const workspaceRouter = router({
   adminUpdateStore: protectedProcedure.input(z.object({ id: z.number().int().positive(), data: z.object({ name: z.string().min(1).max(120).optional(), managerName: z.string().min(1).max(80).optional(), monthlyTargetWan: z.number().nonnegative().optional(), status: z.enum(["正常运营", "筹备中", "装修中"]).optional(), openingDate: z.string().nullable().optional() }) })).mutation(async ({ ctx, input }) => {
     requireRole(ctx.user, ["admin"]);
     const db = await dbOrThrow();
+    const [oldStore] = await db.select({ name: stores.name }).from(stores).where(eq(stores.id, input.id)).limit(1);
+    if (!oldStore) throw new TRPCError({ code: "NOT_FOUND", message: "门店不存在" });
     const result = await db.update(stores).set(input.data).where(eq(stores.id, input.id));
-    if (!result[0]?.affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "门店不存在" });
+    if (input.data.name && input.data.name !== oldStore.name) await db.update(users).set({ storeName: input.data.name }).where(eq(users.storeName, oldStore.name));
+    await writeAudit(db, ctx.user, "编辑门店", input.data.name || oldStore.name, `${input.data.managerName || ""} · ${input.data.status || ""}`);
     return { success: true } as const;
   }),
 
