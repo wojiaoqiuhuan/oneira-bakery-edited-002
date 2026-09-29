@@ -23,6 +23,7 @@ export default function App() {
     remoteMe.data?.role === "store" ? { storeName: remoteMe.data.storeName || undefined } : {},
     { enabled: canReadRemoteReports, retry: false }
   );
+  const remoteStores = trpc.workspace.stores.useQuery(undefined, { enabled: Boolean(remoteMe.data), retry: false });
   const [session, setSession] = useState<Session | null>(() => {
     try { const saved = localStorage.getItem("oneira-demo-session"); return saved ? JSON.parse(saved) : null; } catch { return null; }
   });
@@ -61,6 +62,11 @@ export default function App() {
     setRemoteSynced(true);
     showFlash("已从服务端同步日报数据");
   }, [remoteReports.data, remoteSynced]);
+  useEffect(() => {
+    if (!remoteStores.data) return;
+    const names = remoteStores.data.map(store => store.name);
+    setData(current => current.stores.join("|") === names.join("|") ? current : { ...current, stores: names });
+  }, [remoteStores.data]);
   const showFlash = (message: string) => { setFlash(message); window.setTimeout(() => setFlash(current => current === message ? "" : current), 2600); };
   const syncAll = async () => {
     if (syncing) return;
@@ -81,10 +87,11 @@ export default function App() {
   };
   const enter = (next: Session) => { setSession(next); setView("overview"); window.history.replaceState({}, "", next.role === "admin" ? "/admin" : next.role === "operator" ? "/operations" : "/store"); };
   const logout = async () => { if (auth.isAuthenticated) { try { await auth.logout(); } catch {} } setSession(null); setView("overview"); window.history.replaceState({}, "", "/"); };
+  const switchAccount = async () => { await logout(); showFlash("请选择新的登录角色和门店"); };
   const activeSession = realSession || session;
   if (auth.loading || (auth.isAuthenticated && remoteMe.isLoading)) return <div className="access-page"><div className="access-card"><span className="eyebrow">ONEIRA OPS</span><h2>正在验证工作台权限</h2><p>正在读取口令会话、角色和门店范围，请稍候。</p></div></div>;
   if (!activeSession) return <AccessPage onEnter={enter} />;
-  return <AppShell session={activeSession} view={view} onViewChange={setView} onLogout={logout} flash={flash} syncing={syncing} lastSyncedAt={lastSyncedAt} onSync={() => void syncAll()}>
+  return <AppShell session={activeSession} view={view} onViewChange={setView} onLogout={logout} onSwitchAccount={() => void switchAccount()} flash={flash} syncing={syncing} lastSyncedAt={lastSyncedAt} onSync={() => void syncAll()}>
     {activeSession.role === "admin" && <AdminWorkspace data={data} view={view} onChange={setData} onFlash={showFlash} onNavigate={setView} />}
     {activeSession.role === "operator" && <OperationsWorkspace data={data} view={view} onChange={setData} onFlash={showFlash} sessionName={activeSession.name} onNavigate={setView} />}
     {activeSession.role === "store" && <StoreWorkspace data={data} view={view} onChange={setData} onFlash={showFlash} session={activeSession} onNavigate={setView} />}
