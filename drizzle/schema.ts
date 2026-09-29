@@ -201,6 +201,18 @@ export const retrospectives = mysqlTable("oneira_retrospectives", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const specialDates = mysqlTable("oneira_special_dates", {
+  id: int("id").autoincrement().primaryKey(),
+  date: varchar("date", { length: 10 }).notNull(),
+  label: varchar("label", { length: 160 }).notNull(),
+  type: mysqlEnum("type", ["节假日", "活动日", "特别销售"]).notNull(),
+  note: text("note").notNull(),
+  stores: text("stores").notNull(),
+  createdBy: varchar("createdBy", { length: 80 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Store = typeof stores.$inferSelect;
@@ -213,3 +225,4 @@ export type StoreSuggestion = typeof storeSuggestions.$inferSelect;
 export type CollaborationItem = typeof collaborationItems.$inferSelect;
 export type CollaborationReply = typeof collaborationReplies.$inferSelect;
 export type Retrospective = typeof retrospectives.$inferSelect;
+export type SpecialDate = typeof specialDates.$inferSelect;

@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { collaborationItems, collaborationReplies, dailyReports, retrospectives, stores } from "../drizzle/schema";
+import { collaborationItems, collaborationReplies, dailyReports, retrospectives, specialDates, stores } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getAppRole, canEditStoreRecord, requireRole, requireStoreScope } from "./permissions";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -145,6 +145,36 @@ export const workspaceRouter = router({
     if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "复盘不存在" });
     if (getAppRole(ctx.user) === "store") { requireStoreScope(ctx.user, row.storeName); if (row.authorOpenId !== ctx.user.openId) throw new TRPCError({ code: "FORBIDDEN", message: "只能删除自己创建的复盘" }); } else requireRole(ctx.user, ["admin", "operator"]);
     await db.delete(retrospectives).where(eq(retrospectives.id, input.id));
+    return { success: true } as const;
+  }),
+
+  listSpecialDates: protectedProcedure.query(async ({ ctx }) => {
+    const db = await dbOrThrow();
+    const rows = await db.select().from(specialDates).orderBy(specialDates.date, specialDates.id);
+    const role = getAppRole(ctx.user);
+    return rows.map(row => ({ ...row, stores: (() => { try { return JSON.parse(row.stores) as string[]; } catch { return []; } })() })).filter(row => role !== "store" || row.stores.includes("全部门店") || row.stores.includes(ctx.user.storeName || ""));
+  }),
+
+  createSpecialDate: protectedProcedure.input(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), label: z.string().min(1).max(160), type: z.enum(["节假日", "活动日", "特别销售"]), note: z.string().max(5000).default(""), stores: z.array(z.string().min(1)).min(1).max(50) })).mutation(async ({ ctx, input }) => {
+    requireRole(ctx.user, ["admin", "operator"]);
+    const db = await dbOrThrow();
+    const [created] = await db.insert(specialDates).values({ ...input, stores: JSON.stringify(input.stores), createdBy: ctx.user.name || "未命名用户" }).$returningId();
+    return { id: created.id };
+  }),
+
+  updateSpecialDate: protectedProcedure.input(z.object({ id: z.number().int().positive(), data: z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), label: z.string().min(1).max(160).optional(), type: z.enum(["节假日", "活动日", "特别销售"]).optional(), note: z.string().max(5000).optional(), stores: z.array(z.string().min(1)).min(1).max(50).optional() }) })).mutation(async ({ ctx, input }) => {
+    requireRole(ctx.user, ["admin", "operator"]);
+    const db = await dbOrThrow();
+    const result = await db.update(specialDates).set({ ...input.data, stores: input.data.stores ? JSON.stringify(input.data.stores) : undefined }).where(eq(specialDates.id, input.id));
+    if (!result[0]?.affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "特殊日期不存在" });
+    return { success: true } as const;
+  }),
+
+  deleteSpecialDate: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    requireRole(ctx.user, ["admin", "operator"]);
+    const db = await dbOrThrow();
+    const result = await db.delete(specialDates).where(eq(specialDates.id, input.id));
+    if (!result[0]?.affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "特殊日期不存在" });
     return { success: true } as const;
   }),
 });

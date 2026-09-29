@@ -29,6 +29,7 @@ export default function StoreWorkspace({ data, view, onChange, onFlash, session,
   const remoteMe = trpc.workspace.me.useQuery(undefined, { enabled: auth.isAuthenticated, retry: false });
   const remoteCollaboration = trpc.workspace.listCollaboration.useQuery({ storeName: session.storeName || "西湖店" }, { enabled: auth.isAuthenticated && Boolean(session.storeName), retry: false });
   const remoteRetrospectives = trpc.workspace.listRetrospectives.useQuery({ storeName: session.storeName || "西湖店" }, { enabled: auth.isAuthenticated && Boolean(session.storeName), retry: false });
+  const remoteSpecialDates = trpc.workspace.listSpecialDates.useQuery(undefined, { enabled: auth.isAuthenticated, retry: false });
   const createRemoteReport = trpc.workspace.createReport.useMutation();
   const updateRemoteReport = trpc.workspace.updateReport.useMutation();
   const createRemoteCollaboration = trpc.workspace.createCollaboration.useMutation();
@@ -50,6 +51,7 @@ export default function StoreWorkspace({ data, view, onChange, onFlash, session,
   const canWriteRemote = remoteMe.data?.role === "store" && remoteMe.data.storeName === storeName;
   useEffect(() => { if (!remoteCollaboration.data) return; onChange(current => ({ ...current, collaboration: remoteCollaboration.data.map(item => ({ id: item.id, type: item.type, storeName: item.storeName, title: item.title, body: item.content, status: item.status, author: item.authorName, createdAt: item.createdAt instanceof Date ? item.createdAt.toISOString() : String(item.createdAt), updatedAt: item.updatedAt instanceof Date ? item.updatedAt.toISOString() : String(item.updatedAt), replies: item.replies.map(reply => ({ id: reply.id, author: reply.authorName, role: reply.authorRole, body: reply.body, createdAt: reply.createdAt instanceof Date ? reply.createdAt.toISOString() : String(reply.createdAt) })) })) })); }, [remoteCollaboration.data, onChange]);
   useEffect(() => { if (!remoteRetrospectives.data) return; onChange(current => ({ ...current, retrospectives: remoteRetrospectives.data.map(item => ({ id: item.id, storeName: item.storeName, title: item.title, body: item.body, tags: item.tags, author: item.authorName, date: item.retroDate, mood: item.mood })) })); }, [remoteRetrospectives.data, onChange]);
+  useEffect(() => { if (!remoteSpecialDates.data) return; onChange(current => ({ ...current, specialDates: remoteSpecialDates.data.map(item => ({ id: item.id, date: item.date, label: item.label, type: item.type, note: item.note, stores: item.stores })) })); }, [remoteSpecialDates.data, onChange]);
   const reports = data.reports.filter(report => report.storeName === storeName).sort((a, b) => b.date.localeCompare(a.date));
   const threads = data.collaboration.filter(item => item.storeName === storeName);
   const retros = data.retrospectives.filter(item => item.storeName === storeName || item.storeName === "全门店");
