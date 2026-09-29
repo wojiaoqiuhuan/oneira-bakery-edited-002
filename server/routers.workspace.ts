@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { dailyReports, stores } from "../drizzle/schema";
+import { collaborationItems, collaborationReplies, dailyReports, stores } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getAppRole, canEditStoreRecord, requireRole, requireStoreScope } from "./permissions";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -23,6 +23,13 @@ const reportInput = z.object({
   issue: z.string().max(5000).optional(),
   todayDone: z.string().max(5000).optional(),
   nextPlan: z.string().max(5000).optional(),
+});
+
+const collaborationInput = z.object({
+  type: z.enum(["suggestion", "issue"]),
+  storeName: z.string().min(1).max(120),
+  title: z.string().min(1).max(160),
+  content: z.string().min(1).max(5000),
 });
 
 export const workspaceRouter = router({
@@ -79,6 +86,40 @@ export const workspaceRouter = router({
     const db = await dbOrThrow();
     const result = await db.delete(dailyReports).where(eq(dailyReports.id, input.id));
     if (!result[0]?.affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "日报不存在" });
+    return { success: true } as const;
+  }),
+
+  listCollaboration: protectedProcedure.input(z.object({ storeName: z.string().optional() }).optional()).query(async ({ ctx, input }) => {
+    const db = await dbOrThrow();
+    const requestedStore = input?.storeName || (getAppRole(ctx.user) === "store" ? ctx.user.storeName : undefined);
+    if (getAppRole(ctx.user) === "store" && !requestedStore) throw new TRPCError({ code: "FORBIDDEN", message: "店长尚未绑定门店" });
+    if (requestedStore) requireStoreScope(ctx.user, requestedStore);
+    const items = await db.select().from(collaborationItems).where(requestedStore ? eq(collaborationItems.storeName, requestedStore) : undefined).orderBy(desc(collaborationItems.updatedAt));
+    return Promise.all(items.map(async item => ({ ...item, replies: await db.select().from(collaborationReplies).where(eq(collaborationReplies.itemId, item.id)).orderBy(collaborationReplies.createdAt) })));
+  }),
+
+  createCollaboration: protectedProcedure.input(collaborationInput).mutation(async ({ ctx, input }) => {
+    requireStoreScope(ctx.user, input.storeName);
+    const db = await dbOrThrow();
+    const [created] = await db.insert(collaborationItems).values({ ...input, authorName: ctx.user.name || "未命名用户", authorOpenId: ctx.user.openId, status: "待查看" }).$returningId();
+    return { id: created.id };
+  }),
+
+  replyCollaboration: protectedProcedure.input(z.object({ itemId: z.number().int().positive(), body: z.string().min(1).max(5000) })).mutation(async ({ ctx, input }) => {
+    const role = requireRole(ctx.user, ["admin", "operator"]);
+    const db = await dbOrThrow();
+    const [item] = await db.select().from(collaborationItems).where(eq(collaborationItems.id, input.itemId)).limit(1);
+    if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "协作事项不存在" });
+    await db.insert(collaborationReplies).values({ itemId: item.id, authorName: ctx.user.name || "未命名用户", authorRole: role, body: input.body });
+    await db.update(collaborationItems).set({ status: item.type === "issue" ? "处理中" : "已回复" }).where(eq(collaborationItems.id, item.id));
+    return { success: true } as const;
+  }),
+
+  updateCollaborationStatus: protectedProcedure.input(z.object({ itemId: z.number().int().positive(), status: z.enum(["待查看", "处理中", "已回复", "已解决"]) })).mutation(async ({ ctx, input }) => {
+    requireRole(ctx.user, ["admin", "operator"]);
+    const db = await dbOrThrow();
+    const result = await db.update(collaborationItems).set({ status: input.status }).where(eq(collaborationItems.id, input.itemId));
+    if (!result[0]?.affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "协作事项不存在" });
     return { success: true } as const;
   }),
 });

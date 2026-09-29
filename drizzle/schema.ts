@@ -165,6 +165,28 @@ export const storeSuggestions = mysqlTable("oneira_store_suggestions", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const collaborationItems = mysqlTable("oneira_collaboration_items", {
+  id: int("id").autoincrement().primaryKey(),
+  type: mysqlEnum("type", ["suggestion", "issue"]).notNull(),
+  storeName: varchar("storeName", { length: 120 }).notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  content: text("content").notNull(),
+  status: mysqlEnum("status", ["待查看", "处理中", "已回复", "已解决"]).default("待查看").notNull(),
+  authorName: varchar("authorName", { length: 80 }).notNull(),
+  authorOpenId: varchar("authorOpenId", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const collaborationReplies = mysqlTable("oneira_collaboration_replies", {
+  id: int("id").autoincrement().primaryKey(),
+  itemId: int("itemId").notNull(),
+  authorName: varchar("authorName", { length: 80 }).notNull(),
+  authorRole: mysqlEnum("authorRole", ["admin", "operator", "store"]).notNull(),
+  body: text("body").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Store = typeof stores.$inferSelect;
@@ -174,3 +196,5 @@ export type MonthlyTarget = typeof monthlyTargets.$inferSelect;
 export type ProductRank = typeof productRanks.$inferSelect;
 export type OperationSummary = typeof operationSummaries.$inferSelect;
 export type StoreSuggestion = typeof storeSuggestions.$inferSelect;
+export type CollaborationItem = typeof collaborationItems.$inferSelect;
+export type CollaborationReply = typeof collaborationReplies.$inferSelect;
