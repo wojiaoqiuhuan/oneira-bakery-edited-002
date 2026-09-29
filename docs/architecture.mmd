@@ -1,0 +1,28 @@
+flowchart TB
+  subgraph Roles[三角色工作台]
+    Admin[管理员\n权限·门店·模板·审计]
+    Ops[运营\n总览·排行·收件箱·日历]
+    Store[店长\n日报·建议·复盘·微信复制]
+  end
+  subgraph App[ONEIRA 运营中台]
+    UI[React + TypeScript + Framer Motion]
+    API[tRPC + Express\n服务端权限校验]
+  end
+  subgraph Data[持久化数据]
+    Users[(用户与角色)]
+    Stores[(门店目录)]
+    Reports[(日报与自定义指标)]
+    Collab[(协作·回复·复盘·日历)]
+    Audit[(审计日志)]
+  end
+  Admin --> UI
+  Ops --> UI
+  Store --> UI
+  UI --> API
+  API --> Users
+  API --> Stores
+  API --> Reports
+  API --> Collab
+  API --> Audit
+  Reports --> Summary[日期汇总与门店排行]
+  Summary --> Ops

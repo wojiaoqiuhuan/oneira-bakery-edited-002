@@ -1,0 +1,1 @@
+ALTER TABLE `oneira_daily_reports` ADD `customMetrics` text;

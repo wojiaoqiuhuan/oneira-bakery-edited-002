@@ -16,7 +16,8 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+    role: mysqlEnum("role", ["user", "admin", "operator", "store"]).default("user").notNull(),
+    storeName: varchar("storeName", { length: 120 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -56,6 +57,7 @@ export const dailyReports = mysqlTable(
     storedCount: double("storedCount").default(0).notNull(),
     storedAmount: double("storedAmount").default(0).notNull(),
     praiseCount: double("praiseCount").default(0).notNull(),
+    customMetrics: text("customMetrics"),
     issue: text("issue"),
     issueStatus: mysqlEnum("issueStatus", ["待处理", "处理中", "已解决"])
       .default("待处理")
@@ -164,6 +166,87 @@ export const storeSuggestions = mysqlTable("oneira_store_suggestions", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const collaborationItems = mysqlTable("oneira_collaboration_items", {
+  id: int("id").autoincrement().primaryKey(),
+  type: mysqlEnum("type", ["suggestion", "issue"]).notNull(),
+  storeName: varchar("storeName", { length: 120 }).notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  content: text("content").notNull(),
+  status: mysqlEnum("status", ["待查看", "处理中", "已回复", "已解决"]).default("待查看").notNull(),
+  authorName: varchar("authorName", { length: 80 }).notNull(),
+  authorOpenId: varchar("authorOpenId", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const collaborationReplies = mysqlTable("oneira_collaboration_replies", {
+  id: int("id").autoincrement().primaryKey(),
+  itemId: int("itemId").notNull(),
+  authorName: varchar("authorName", { length: 80 }).notNull(),
+  authorRole: mysqlEnum("authorRole", ["admin", "operator", "store"]).notNull(),
+  body: text("body").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const retrospectives = mysqlTable("oneira_retrospectives", {
+  id: int("id").autoincrement().primaryKey(),
+  storeName: varchar("storeName", { length: 120 }).notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  body: text("body").notNull(),
+  tags: text("tags").notNull(),
+  authorName: varchar("authorName", { length: 80 }).notNull(),
+  authorOpenId: varchar("authorOpenId", { length: 64 }),
+  retroDate: varchar("retroDate", { length: 10 }).notNull(),
+  mood: mysqlEnum("mood", ["顺利", "有收获", "需跟进"]).default("有收获").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const specialDates = mysqlTable("oneira_special_dates", {
+  id: int("id").autoincrement().primaryKey(),
+  date: varchar("date", { length: 10 }).notNull(),
+  label: varchar("label", { length: 160 }).notNull(),
+  type: mysqlEnum("type", ["节假日", "活动日", "特别销售"]).notNull(),
+  note: text("note").notNull(),
+  stores: text("stores").notNull(),
+  createdBy: varchar("createdBy", { length: 80 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const reportTemplates = mysqlTable("oneira_report_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  templateKey: varchar("templateKey", { length: 80 }).notNull().unique(),
+  name: varchar("name", { length: 160 }).notNull(),
+  description: text("description").notNull(),
+  updatedBy: varchar("updatedBy", { length: 80 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const reportTemplateFields = mysqlTable("oneira_report_template_fields", {
+  id: int("id").autoincrement().primaryKey(),
+  templateId: int("templateId").notNull(),
+  fieldId: varchar("fieldId", { length: 80 }).notNull(),
+  label: varchar("label", { length: 160 }).notNull(),
+  group: mysqlEnum("group", ["经营数据", "现场记录", "问题跟进"]).notNull(),
+  required: boolean("required").default(false).notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  copyToWechat: boolean("copyToWechat").default(true).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+});
+
+export const auditLogs = mysqlTable("oneira_audit_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  action: varchar("action", { length: 120 }).notNull(),
+  actorName: varchar("actorName", { length: 80 }).notNull(),
+  actorOpenId: varchar("actorOpenId", { length: 64 }).notNull(),
+  actorRole: mysqlEnum("actorRole", ["admin", "operator", "store"]).notNull(),
+  target: varchar("target", { length: 200 }).notNull(),
+  detail: text("detail").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Store = typeof stores.$inferSelect;
@@ -173,3 +256,10 @@ export type MonthlyTarget = typeof monthlyTargets.$inferSelect;
 export type ProductRank = typeof productRanks.$inferSelect;
 export type OperationSummary = typeof operationSummaries.$inferSelect;
 export type StoreSuggestion = typeof storeSuggestions.$inferSelect;
+export type CollaborationItem = typeof collaborationItems.$inferSelect;
+export type CollaborationReply = typeof collaborationReplies.$inferSelect;
+export type Retrospective = typeof retrospectives.$inferSelect;
+export type SpecialDate = typeof specialDates.$inferSelect;
+export type ReportTemplate = typeof reportTemplates.$inferSelect;
+export type ReportTemplateField = typeof reportTemplateFields.$inferSelect;
+export type AuditLog = typeof auditLogs.$inferSelect;
