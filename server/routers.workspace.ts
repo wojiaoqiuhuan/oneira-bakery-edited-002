@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { collaborationItems, collaborationReplies, dailyReports, retrospectives, specialDates, stores, users } from "../drizzle/schema";
+import { collaborationItems, collaborationReplies, dailyReports, reportTemplateFields, reportTemplates, retrospectives, specialDates, stores, users } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getAppRole, canEditStoreRecord, requireRole, requireStoreScope } from "./permissions";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -182,6 +182,26 @@ export const workspaceRouter = router({
     requireRole(ctx.user, ["admin"]);
     const db = await dbOrThrow();
     return db.select({ id: users.id, openId: users.openId, name: users.name, email: users.email, role: users.role, storeName: users.storeName, lastSignedIn: users.lastSignedIn }).from(users).orderBy(users.name);
+  }),
+
+  getReportTemplate: protectedProcedure.query(async () => {
+    const db = await dbOrThrow();
+    const [template] = await db.select().from(reportTemplates).where(eq(reportTemplates.templateKey, "daily-report")).limit(1);
+    if (!template) return null;
+    const fields = await db.select().from(reportTemplateFields).where(eq(reportTemplateFields.templateId, template.id)).orderBy(reportTemplateFields.sortOrder);
+    return { ...template, fields };
+  }),
+
+  saveReportTemplate: protectedProcedure.input(z.object({ name: z.string().min(1).max(160), description: z.string().max(5000), fields: z.array(z.object({ fieldId: z.string().min(1).max(80), label: z.string().min(1).max(160), group: z.enum(["经营数据", "现场记录", "问题跟进"]), required: z.boolean(), enabled: z.boolean(), copyToWechat: z.boolean() })).min(1) })).mutation(async ({ ctx, input }) => {
+    requireRole(ctx.user, ["admin"]);
+    const db = await dbOrThrow();
+    const [existing] = await db.select({ id: reportTemplates.id }).from(reportTemplates).where(eq(reportTemplates.templateKey, "daily-report")).limit(1);
+    let templateId = existing?.id;
+    if (templateId) await db.update(reportTemplates).set({ name: input.name, description: input.description, updatedBy: ctx.user.name || "未命名用户" }).where(eq(reportTemplates.id, templateId));
+    else { const [created] = await db.insert(reportTemplates).values({ templateKey: "daily-report", name: input.name, description: input.description, updatedBy: ctx.user.name || "未命名用户" }).$returningId(); templateId = created.id; }
+    await db.delete(reportTemplateFields).where(eq(reportTemplateFields.templateId, templateId));
+    await db.insert(reportTemplateFields).values(input.fields.map((field, index) => ({ templateId: templateId!, ...field, sortOrder: index })));
+    return { success: true } as const;
   }),
 
   adminUpdateUser: protectedProcedure.input(z.object({ id: z.number().int().positive(), role: z.enum(["user", "admin", "operator", "store"]), storeName: z.string().max(120).nullable().optional() })).mutation(async ({ ctx, input }) => {

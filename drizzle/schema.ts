@@ -213,6 +213,28 @@ export const specialDates = mysqlTable("oneira_special_dates", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const reportTemplates = mysqlTable("oneira_report_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  templateKey: varchar("templateKey", { length: 80 }).notNull().unique(),
+  name: varchar("name", { length: 160 }).notNull(),
+  description: text("description").notNull(),
+  updatedBy: varchar("updatedBy", { length: 80 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const reportTemplateFields = mysqlTable("oneira_report_template_fields", {
+  id: int("id").autoincrement().primaryKey(),
+  templateId: int("templateId").notNull(),
+  fieldId: varchar("fieldId", { length: 80 }).notNull(),
+  label: varchar("label", { length: 160 }).notNull(),
+  group: mysqlEnum("group", ["经营数据", "现场记录", "问题跟进"]).notNull(),
+  required: boolean("required").default(false).notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  copyToWechat: boolean("copyToWechat").default(true).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Store = typeof stores.$inferSelect;
@@ -226,3 +248,5 @@ export type CollaborationItem = typeof collaborationItems.$inferSelect;
 export type CollaborationReply = typeof collaborationReplies.$inferSelect;
 export type Retrospective = typeof retrospectives.$inferSelect;
 export type SpecialDate = typeof specialDates.$inferSelect;
+export type ReportTemplate = typeof reportTemplates.$inferSelect;
+export type ReportTemplateField = typeof reportTemplateFields.$inferSelect;
