@@ -16,6 +16,7 @@ const parseCustomMetrics = (value: string | null | undefined): Record<string, st
 
 export default function App() {
   const auth = useAuth();
+  const utils = trpc.useUtils();
   const remoteMe = trpc.workspace.me.useQuery(undefined, { enabled: auth.isAuthenticated, retry: false });
   const canReadRemoteReports = Boolean(remoteMe.data && (remoteMe.data.role !== "store" || remoteMe.data.storeName));
   const remoteReports = trpc.workspace.listReports.useQuery(
@@ -31,6 +32,8 @@ export default function App() {
   });
   const [flash, setFlash] = useState("");
   const [remoteSynced, setRemoteSynced] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState("刚刚");
   const realSession: Session | null = remoteMe.data ? { role: remoteMe.data.role, name: remoteMe.data.name || remoteMe.data.email || "ONEIRA 用户", storeName: remoteMe.data.storeName || undefined } : null;
   useEffect(() => { localStorage.setItem("oneira-demo-data", JSON.stringify(data)); }, [data]);
   useEffect(() => { if (session) localStorage.setItem("oneira-demo-session", JSON.stringify(session)); else localStorage.removeItem("oneira-demo-session"); }, [session]);
@@ -59,12 +62,29 @@ export default function App() {
     showFlash("已从服务端同步日报数据");
   }, [remoteReports.data, remoteSynced]);
   const showFlash = (message: string) => { setFlash(message); window.setTimeout(() => setFlash(current => current === message ? "" : current), 2600); };
+  const syncAll = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    setRemoteSynced(false);
+    showFlash("正在同步各部门最新数据…");
+    try {
+      await utils.invalidate();
+      await remoteReports.refetch();
+      const time = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+      setLastSyncedAt(time);
+      showFlash(`同步完成 · ${time}`);
+    } catch (error) {
+      showFlash(error instanceof Error ? `同步失败：${error.message}` : "同步失败，请稍后重试");
+    } finally {
+      setSyncing(false);
+    }
+  };
   const enter = (next: Session) => { setSession(next); setView("overview"); window.history.replaceState({}, "", next.role === "admin" ? "/admin" : next.role === "operator" ? "/operations" : "/store"); };
   const logout = async () => { if (auth.isAuthenticated) { try { await auth.logout(); } catch {} } setSession(null); setView("overview"); window.history.replaceState({}, "", "/"); };
   const activeSession = realSession || session;
   if (auth.loading || (auth.isAuthenticated && remoteMe.isLoading)) return <div className="access-page"><div className="access-card"><span className="eyebrow">ONEIRA OPS</span><h2>正在验证工作台权限</h2><p>正在读取口令会话、角色和门店范围，请稍候。</p></div></div>;
   if (!activeSession) return <AccessPage onEnter={enter} />;
-  return <AppShell session={activeSession} view={view} onViewChange={setView} onLogout={logout} flash={flash}>
+  return <AppShell session={activeSession} view={view} onViewChange={setView} onLogout={logout} flash={flash} syncing={syncing} lastSyncedAt={lastSyncedAt} onSync={() => void syncAll()}>
     {activeSession.role === "admin" && <AdminWorkspace data={data} view={view} onChange={setData} onFlash={showFlash} onNavigate={setView} />}
     {activeSession.role === "operator" && <OperationsWorkspace data={data} view={view} onChange={setData} onFlash={showFlash} sessionName={activeSession.name} onNavigate={setView} />}
     {activeSession.role === "store" && <StoreWorkspace data={data} view={view} onChange={setData} onFlash={showFlash} session={activeSession} onNavigate={setView} />}

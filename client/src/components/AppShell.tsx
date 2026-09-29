@@ -12,6 +12,7 @@ import {
   MessageCircle,
   PanelLeftClose,
   PanelLeftOpen,
+  RefreshCw,
   Settings2,
   ShieldCheck,
   Sparkles,
@@ -53,7 +54,7 @@ const navByRole: Record<Role, { id: WorkspaceView; label: string; icon: ReactNod
   ],
 };
 
-export function AppShell({ session, view, onViewChange, onLogout, children, flash }: { session: Session; view: WorkspaceView; onViewChange: (view: WorkspaceView) => void; onLogout: () => void; children: ReactNode; flash?: string }) {
+export function AppShell({ session, view, onViewChange, onLogout, children, flash, syncing = false, lastSyncedAt = "刚刚", onSync }: { session: Session; view: WorkspaceView; onViewChange: (view: WorkspaceView) => void; onLogout: () => void; children: ReactNode; flash?: string; syncing?: boolean; lastSyncedAt?: string; onSync?: () => void }) {
   const [collapsed, setCollapsed] = useState(false);
   const meta = roleMeta[session.role];
   const nav = navByRole[session.role];
@@ -62,11 +63,11 @@ export function AppShell({ session, view, onViewChange, onLogout, children, flas
       <div className="brand-lockup"><div className="brand-mark"><Sparkles size={18} /></div><div className="brand-words"><strong>ONEIRA</strong><span>梦面包 · Ops OS</span></div></div>
       <div className="role-chip"><div className={`avatar avatar-${meta.tone}`}>{meta.mark}</div><div><strong>{session.name}</strong><span>{meta.label}{session.storeName ? ` · ${session.storeName}` : ""}</span></div></div>
       <nav className="side-nav">{nav.map(item => <button key={item.id} className={`nav-item ${view === item.id ? "is-active" : ""}`} onClick={() => onViewChange(item.id)}>{item.icon}<span>{item.label}</span>{view === item.id && <motion.i layoutId="nav-indicator" />}</button>)}</nav>
-      <div className="sidebar-bottom"><div className="sidebar-note"><span className="pulse-dot" /><div><strong>数据已同步</strong><small>刚刚更新 · 安全连接</small></div></div><button className="logout-link" onClick={onLogout}><LogOut size={16} />退出工作台</button></div>
+      <div className="sidebar-bottom"><button className={`sidebar-note sync-control ${syncing ? "is-syncing" : ""}`} onClick={onSync} disabled={syncing}><span className="pulse-dot" /><div><strong>{syncing ? "正在同步" : "数据已同步"}</strong><small>{syncing ? "正在读取最新数据" : `${lastSyncedAt} · 安全连接`}</small></div><RefreshCw size={15} /></button><button className="logout-link" onClick={onLogout}><LogOut size={16} />退出工作台</button></div>
       <IconButton label={collapsed ? "展开侧栏" : "收起侧栏"} onClick={() => setCollapsed(!collapsed)} variant="soft"><span className="collapse-icon">{collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}</span></IconButton>
     </aside>
     <main className="main-shell">
-      <header className="topbar"><div className="mobile-brand"><div className="brand-mark"><Sparkles size={16} /></div><strong>ONEIRA</strong></div><div className="topbar-meta"><span className="live-dot" />工作台在线 <span className="topbar-divider" />{session.storeName || "全门店视图"}</div><button className="topbar-profile" onClick={onLogout}><div className={`avatar avatar-${meta.tone}`}>{meta.mark}</div><span>{session.name}</span><Settings2 size={15} /></button></header>
+      <header className="topbar"><div className="mobile-brand"><div className="brand-mark"><Sparkles size={16} /></div><strong>ONEIRA</strong></div><div className="topbar-meta"><span className="live-dot" />工作台在线 <span className="topbar-divider" />{session.storeName || "全门店视图"}</div><div className="topbar-actions"><button className={`sync-button ${syncing ? "is-syncing" : ""}`} onClick={onSync} disabled={syncing} title="刷新各部门最新数据"><RefreshCw size={15} /><span>{syncing ? "同步中…" : `同步 ${lastSyncedAt}`}</span></button><button className="topbar-profile" onClick={onLogout}><div className={`avatar avatar-${meta.tone}`}>{meta.mark}</div><span>{session.name}</span><Settings2 size={15} /></button></div></header>
       <div className="page-content">{children}</div>
     </main>
     <nav className="mobile-nav">{nav.slice(0, 4).map(item => <button key={item.id} className={view === item.id ? "is-active" : ""} onClick={() => onViewChange(item.id)}>{item.icon}<span>{item.label}</span></button>)}</nav>
