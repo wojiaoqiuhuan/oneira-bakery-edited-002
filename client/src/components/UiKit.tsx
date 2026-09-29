@@ -48,8 +48,8 @@ export function Card({ children, className = "", onClick, id }: { children: Reac
   return <motion.section layout id={id} className={`card ${className}`} onClick={onClick} whileHover={onClick ? { y: -2 } : undefined} transition={{ duration: 0.2 }}>{children}</motion.section>;
 }
 
-export function StatCard({ label, value, hint, icon, tone = "orange" }: { label: string; value: string; hint: string; icon: ReactNode; tone?: "orange" | "blue" | "green" | "gold" }) {
-  return <Card className="stat-card"><div className={`stat-icon stat-icon-${tone}`}>{icon}</div><div className="stat-copy"><span>{label}</span><strong>{value}</strong><small>{hint}</small></div></Card>;
+export function StatCard({ label, value, hint, icon, tone = "orange", onClick }: { label: string; value: string; hint: string; icon: ReactNode; tone?: "orange" | "blue" | "green" | "gold"; onClick?: () => void }) {
+  return <Card className={`stat-card${onClick ? " stat-card-interactive" : ""}`} onClick={onClick}><div className={`stat-icon stat-icon-${tone}`}>{icon}</div><div className="stat-copy"><span>{label}</span><strong>{value}</strong><small>{hint}</small>{onClick && <em>点击查看</em>}</div></Card>;
 }
 
 export function SectionHeader({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description?: string; action?: ReactNode }) {
