@@ -26,6 +26,7 @@ export default function App() {
   });
   const [flash, setFlash] = useState("");
   const [remoteSynced, setRemoteSynced] = useState(false);
+  const realSession: Session | null = remoteMe.data ? { role: remoteMe.data.role, name: remoteMe.data.name || remoteMe.data.email || "ONEIRA 用户", storeName: remoteMe.data.storeName || undefined } : null;
   useEffect(() => { localStorage.setItem("oneira-demo-data", JSON.stringify(data)); }, [data]);
   useEffect(() => { if (session) localStorage.setItem("oneira-demo-session", JSON.stringify(session)); else localStorage.removeItem("oneira-demo-session"); }, [session]);
   useEffect(() => {
@@ -51,11 +52,13 @@ export default function App() {
   }, [remoteReports.data, remoteSynced]);
   const showFlash = (message: string) => { setFlash(message); window.setTimeout(() => setFlash(current => current === message ? "" : current), 2600); };
   const enter = (next: Session) => { setSession(next); setView("overview"); window.history.replaceState({}, "", next.role === "admin" ? "/admin" : next.role === "operator" ? "/operations" : "/store"); };
-  const logout = () => { setSession(null); setView("overview"); window.history.replaceState({}, "", "/"); };
-  if (!session) return <AccessPage onEnter={enter} />;
-  return <AppShell session={session} view={view} onViewChange={setView} onLogout={logout} flash={flash}>
-    {session.role === "admin" && <AdminWorkspace data={data} view={view} onChange={setData} onFlash={showFlash} onNavigate={setView} />}
-    {session.role === "operator" && <OperationsWorkspace data={data} view={view} onChange={setData} onFlash={showFlash} sessionName={session.name} onNavigate={setView} />}
-    {session.role === "store" && <StoreWorkspace data={data} view={view} onChange={setData} onFlash={showFlash} session={session} onNavigate={setView} />}
+  const logout = async () => { if (auth.isAuthenticated) { try { await auth.logout(); } catch {} } setSession(null); setView("overview"); window.history.replaceState({}, "", "/"); };
+  const activeSession = realSession || session;
+  if (auth.loading || (auth.isAuthenticated && remoteMe.isLoading)) return <div className="access-page"><div className="access-card"><span className="eyebrow">ONEIRA OPS</span><h2>正在验证工作台权限</h2><p>正在读取真实账户、角色和门店范围，请稍候。</p></div></div>;
+  if (!activeSession) return <AccessPage onEnter={enter} />;
+  return <AppShell session={activeSession} view={view} onViewChange={setView} onLogout={logout} flash={flash}>
+    {activeSession.role === "admin" && <AdminWorkspace data={data} view={view} onChange={setData} onFlash={showFlash} onNavigate={setView} />}
+    {activeSession.role === "operator" && <OperationsWorkspace data={data} view={view} onChange={setData} onFlash={showFlash} sessionName={activeSession.name} onNavigate={setView} />}
+    {activeSession.role === "store" && <StoreWorkspace data={data} view={view} onChange={setData} onFlash={showFlash} session={activeSession} onNavigate={setView} />}
   </AppShell>;
 }
