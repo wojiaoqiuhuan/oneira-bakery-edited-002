@@ -187,6 +187,20 @@ export const collaborationReplies = mysqlTable("oneira_collaboration_replies", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const retrospectives = mysqlTable("oneira_retrospectives", {
+  id: int("id").autoincrement().primaryKey(),
+  storeName: varchar("storeName", { length: 120 }).notNull(),
+  title: varchar("title", { length: 160 }).notNull(),
+  body: text("body").notNull(),
+  tags: text("tags").notNull(),
+  authorName: varchar("authorName", { length: 80 }).notNull(),
+  authorOpenId: varchar("authorOpenId", { length: 64 }),
+  retroDate: varchar("retroDate", { length: 10 }).notNull(),
+  mood: mysqlEnum("mood", ["顺利", "有收获", "需跟进"]).default("有收获").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Store = typeof stores.$inferSelect;
@@ -198,3 +212,4 @@ export type OperationSummary = typeof operationSummaries.$inferSelect;
 export type StoreSuggestion = typeof storeSuggestions.$inferSelect;
 export type CollaborationItem = typeof collaborationItems.$inferSelect;
 export type CollaborationReply = typeof collaborationReplies.$inferSelect;
+export type Retrospective = typeof retrospectives.$inferSelect;

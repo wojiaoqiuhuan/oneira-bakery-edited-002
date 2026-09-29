@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { collaborationItems, collaborationReplies, dailyReports, stores } from "../drizzle/schema";
+import { collaborationItems, collaborationReplies, dailyReports, retrospectives, stores } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getAppRole, canEditStoreRecord, requireRole, requireStoreScope } from "./permissions";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -120,6 +120,31 @@ export const workspaceRouter = router({
     const db = await dbOrThrow();
     const result = await db.update(collaborationItems).set({ status: input.status }).where(eq(collaborationItems.id, input.itemId));
     if (!result[0]?.affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "协作事项不存在" });
+    return { success: true } as const;
+  }),
+
+  listRetrospectives: protectedProcedure.input(z.object({ storeName: z.string().optional() }).optional()).query(async ({ ctx, input }) => {
+    const db = await dbOrThrow();
+    const requestedStore = input?.storeName || (getAppRole(ctx.user) === "store" ? ctx.user.storeName : undefined);
+    if (getAppRole(ctx.user) === "store" && !requestedStore) throw new TRPCError({ code: "FORBIDDEN", message: "店长尚未绑定门店" });
+    if (requestedStore) requireStoreScope(ctx.user, requestedStore);
+    const rows = await db.select().from(retrospectives).where(requestedStore ? eq(retrospectives.storeName, requestedStore) : undefined).orderBy(desc(retrospectives.retroDate), desc(retrospectives.id));
+    return rows.map(row => ({ ...row, tags: (() => { try { return JSON.parse(row.tags) as string[]; } catch { return []; } })() }));
+  }),
+
+  createRetrospective: protectedProcedure.input(z.object({ storeName: z.string().min(1).max(120), title: z.string().min(1).max(160), body: z.string().min(1).max(10000), tags: z.array(z.string().max(40)).max(8).default([]), retroDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), mood: z.enum(["顺利", "有收获", "需跟进"]).default("有收获") })).mutation(async ({ ctx, input }) => {
+    requireStoreScope(ctx.user, input.storeName);
+    const db = await dbOrThrow();
+    const [created] = await db.insert(retrospectives).values({ storeName: input.storeName, title: input.title, body: input.body, tags: JSON.stringify(input.tags), retroDate: input.retroDate, mood: input.mood, authorName: ctx.user.name || "未命名用户", authorOpenId: ctx.user.openId }).$returningId();
+    return { id: created.id };
+  }),
+
+  deleteRetrospective: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const db = await dbOrThrow();
+    const [row] = await db.select().from(retrospectives).where(eq(retrospectives.id, input.id)).limit(1);
+    if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "复盘不存在" });
+    if (getAppRole(ctx.user) === "store") { requireStoreScope(ctx.user, row.storeName); if (row.authorOpenId !== ctx.user.openId) throw new TRPCError({ code: "FORBIDDEN", message: "只能删除自己创建的复盘" }); } else requireRole(ctx.user, ["admin", "operator"]);
+    await db.delete(retrospectives).where(eq(retrospectives.id, input.id));
     return { success: true } as const;
   }),
 });
