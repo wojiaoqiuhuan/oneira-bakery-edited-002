@@ -24,6 +24,8 @@ const reportInput = z.object({
   traffic: z.number().nonnegative().default(0),
   avgTicket: z.number().nonnegative().default(0),
   wasteAmount: z.number().nonnegative().default(0),
+  tastingAmount: z.number().nonnegative().default(0),
+  praiseCount: z.number().nonnegative().default(0),
   issue: z.string().max(5000).optional(),
   todayDone: z.string().max(5000).optional(),
   nextPlan: z.string().max(5000).optional(),
@@ -216,7 +218,12 @@ export const workspaceRouter = router({
     const [template] = await db.select().from(reportTemplates).where(eq(reportTemplates.templateKey, "daily-report")).limit(1);
     if (!template) return null;
     const fields = await db.select().from(reportTemplateFields).where(eq(reportTemplateFields.templateId, template.id)).orderBy(reportTemplateFields.sortOrder);
-    return { ...template, fields };
+    const builtIns = [
+      { fieldId: "tastingAmount", label: "试吃金额", group: "经营数据" as const, required: false, enabled: true, copyToWechat: true },
+      { fieldId: "praiseCount", label: "好评数", group: "经营数据" as const, required: false, enabled: true, copyToWechat: true },
+    ];
+    const existingIds = new Set(fields.map(field => field.fieldId));
+    return { ...template, fields: [...fields, ...builtIns.filter(field => !existingIds.has(field.fieldId)).map((field, index) => ({ ...field, id: -(index + 1), templateId: template.id, sortOrder: fields.length + index }))] };
   }),
 
   saveReportTemplate: protectedProcedure.input(z.object({ name: z.string().min(1).max(160), description: z.string().max(5000), fields: z.array(z.object({ fieldId: z.string().min(1).max(80), label: z.string().min(1).max(160), group: z.enum(["经营数据", "现场记录", "问题跟进"]), required: z.boolean(), enabled: z.boolean(), copyToWechat: z.boolean() })).min(1) })).mutation(async ({ ctx, input }) => {

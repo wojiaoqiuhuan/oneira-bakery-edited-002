@@ -35,6 +35,8 @@ export type DailyReport = {
   traffic: number;
   avgTicket: number;
   wasteAmount: number;
+  tastingAmount?: number;
+  praiseCount?: number;
   todayDone: string;
   tomorrowPlan: string;
   issue: string;

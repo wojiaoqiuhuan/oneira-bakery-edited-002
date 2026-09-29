@@ -55,3 +55,25 @@ input, textarea, select { width: 100%; color: var(--ink); border: 1px solid var(
 .demo-divider { display: flex; align-items: center; gap: 8px; margin: 10px 0 14px; color: #b09e91; font-size: 10px; }
 .demo-divider:before, .demo-divider:after { content: ""; height: 1px; flex: 1; background: #eee2d8; }
 .demo-divider small { font-size: 10px; }
+.inbox-list-card, .inbox-summary, .inbox-list, .management-list, .management-row { min-width: 0; max-width: 100%; }
+.inbox-list { overflow: hidden; }
+.inbox-row { min-width: 0; max-width: 100%; }
+.inbox-row .status-pill { flex: 0 0 auto; max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inbox-copy > div { min-width: 0; align-items: flex-start; }
+.inbox-copy > div > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.management-row { grid-template-columns: minmax(0, 1fr) minmax(88px, auto) minmax(88px, auto); }
+.management-row select { min-width: 0; max-width: 100%; }
+.report-summary-card { min-width: 0; overflow: hidden; }
+.report-summary-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.report-summary-head h3 { margin: 7px 0 4px; font-size: 18px; }
+.report-summary-head p { margin: 0; color: var(--muted); font-size: 11px; }
+.summary-filters { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.summary-filters label { display: grid; gap: 5px; color: var(--muted); font-size: 9px; font-weight: 700; }
+.summary-filters input, .summary-filters select { width: 132px; height: 34px; border-radius: 9px; font-size: 11px; }
+.summary-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 13px 0; color: var(--muted); font-size: 10px; }
+.summary-meta span { padding: 5px 8px; background: #fbf6f0; border-radius: 7px; }
+.summary-stat-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 9px; }
+.summary-stat-grid .stat-card { min-width: 0; padding: 13px; }
+.summary-stat-grid .stat-value { font-size: 20px; }
+@media (max-width: 1120px) { .summary-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 780px) { .inbox-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; } .inbox-copy > div { display: grid; gap: 3px; } .management-row { grid-template-columns: minmax(0, 1fr) minmax(88px, 1fr); } .management-row > div { grid-column: 1 / -1; } .management-row select { width: 100%; } .report-summary-head { display: grid; } .summary-filters { justify-content: stretch; } .summary-filters label { flex: 1 1 130px; } .summary-filters input, .summary-filters select { width: 100%; } .summary-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

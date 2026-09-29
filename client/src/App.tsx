@@ -40,6 +40,8 @@ export default function App() {
       traffic: report.traffic,
       avgTicket: report.avgTicket,
       wasteAmount: report.wasteAmount,
+      tastingAmount: report.tastingAmount || 0,
+      praiseCount: report.praiseCount || 0,
       todayDone: report.todayDone || "",
       tomorrowPlan: report.nextPlan || "",
       issue: report.issue || "",
