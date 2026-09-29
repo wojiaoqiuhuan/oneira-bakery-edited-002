@@ -235,6 +235,17 @@ export const reportTemplateFields = mysqlTable("oneira_report_template_fields", 
   sortOrder: int("sortOrder").default(0).notNull(),
 });
 
+export const auditLogs = mysqlTable("oneira_audit_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  action: varchar("action", { length: 120 }).notNull(),
+  actorName: varchar("actorName", { length: 80 }).notNull(),
+  actorOpenId: varchar("actorOpenId", { length: 64 }).notNull(),
+  actorRole: mysqlEnum("actorRole", ["admin", "operator", "store"]).notNull(),
+  target: varchar("target", { length: 200 }).notNull(),
+  detail: text("detail").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Store = typeof stores.$inferSelect;
@@ -250,3 +261,4 @@ export type Retrospective = typeof retrospectives.$inferSelect;
 export type SpecialDate = typeof specialDates.$inferSelect;
 export type ReportTemplate = typeof reportTemplates.$inferSelect;
 export type ReportTemplateField = typeof reportTemplateFields.$inferSelect;
+export type AuditLog = typeof auditLogs.$inferSelect;

@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { collaborationItems, collaborationReplies, dailyReports, reportTemplateFields, reportTemplates, retrospectives, specialDates, stores, users } from "../drizzle/schema";
+import { auditLogs, collaborationItems, collaborationReplies, dailyReports, reportTemplateFields, reportTemplates, retrospectives, specialDates, stores, users } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getAppRole, canEditStoreRecord, requireRole, requireStoreScope } from "./permissions";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -10,6 +10,10 @@ const dbOrThrow = async () => {
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "云端数据库暂不可用" });
   return db;
+};
+
+const writeAudit = async (db: Awaited<ReturnType<typeof dbOrThrow>>, user: Parameters<typeof getAppRole>[0], action: string, target: string, detail: string) => {
+  await db.insert(auditLogs).values({ action, target, detail, actorName: user.name || "未命名用户", actorOpenId: user.openId, actorRole: getAppRole(user) });
 };
 
 const reportInput = z.object({
@@ -68,6 +72,7 @@ export const workspaceRouter = router({
     const existing = await db.select({ id: dailyReports.id }).from(dailyReports).where(and(eq(dailyReports.storeName, input.storeName), eq(dailyReports.reportDate, input.reportDate))).limit(1);
     if (existing[0]) throw new TRPCError({ code: "CONFLICT", message: "该门店当天已经有日报" });
     const [created] = await db.insert(dailyReports).values({ ...input, reporter: ctx.user.name || "未命名用户", submitted: true, issueStatus: input.issue ? "待处理" : "已解决" }).$returningId();
+    await writeAudit(db, ctx.user, "提交日报", `${input.storeName} · ${input.reportDate}`, `实收 ${input.revenue}`);
     return { id: created.id };
   }),
 
@@ -102,6 +107,7 @@ export const workspaceRouter = router({
     requireStoreScope(ctx.user, input.storeName);
     const db = await dbOrThrow();
     const [created] = await db.insert(collaborationItems).values({ ...input, authorName: ctx.user.name || "未命名用户", authorOpenId: ctx.user.openId, status: "待查看" }).$returningId();
+    await writeAudit(db, ctx.user, input.type === "issue" ? "提交问题" : "提交建议", `协作 #${created.id}`, input.title);
     return { id: created.id };
   }),
 
@@ -112,6 +118,7 @@ export const workspaceRouter = router({
     if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "协作事项不存在" });
     await db.insert(collaborationReplies).values({ itemId: item.id, authorName: ctx.user.name || "未命名用户", authorRole: role, body: input.body });
     await db.update(collaborationItems).set({ status: item.type === "issue" ? "处理中" : "已回复" }).where(eq(collaborationItems.id, item.id));
+    await writeAudit(db, ctx.user, "回复协作事项", `协作 #${item.id}`, input.body);
     return { success: true } as const;
   }),
 
@@ -120,6 +127,7 @@ export const workspaceRouter = router({
     const db = await dbOrThrow();
     const result = await db.update(collaborationItems).set({ status: input.status }).where(eq(collaborationItems.id, input.itemId));
     if (!result[0]?.affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "协作事项不存在" });
+    await writeAudit(db, ctx.user, "更新协作状态", `协作 #${input.itemId}`, input.status);
     return { success: true } as const;
   }),
 
@@ -136,6 +144,7 @@ export const workspaceRouter = router({
     requireStoreScope(ctx.user, input.storeName);
     const db = await dbOrThrow();
     const [created] = await db.insert(retrospectives).values({ storeName: input.storeName, title: input.title, body: input.body, tags: JSON.stringify(input.tags), retroDate: input.retroDate, mood: input.mood, authorName: ctx.user.name || "未命名用户", authorOpenId: ctx.user.openId }).$returningId();
+    await writeAudit(db, ctx.user, "新增复盘备忘", `复盘 #${created.id}`, input.title);
     return { id: created.id };
   }),
 
@@ -159,6 +168,7 @@ export const workspaceRouter = router({
     requireRole(ctx.user, ["admin", "operator"]);
     const db = await dbOrThrow();
     const [created] = await db.insert(specialDates).values({ ...input, stores: JSON.stringify(input.stores), createdBy: ctx.user.name || "未命名用户" }).$returningId();
+    await writeAudit(db, ctx.user, "新增特殊日期", `标注 #${created.id}`, input.label);
     return { id: created.id };
   }),
 
@@ -184,6 +194,13 @@ export const workspaceRouter = router({
     return db.select({ id: users.id, openId: users.openId, name: users.name, email: users.email, role: users.role, storeName: users.storeName, lastSignedIn: users.lastSignedIn }).from(users).orderBy(users.name);
   }),
 
+  listAuditLogs: protectedProcedure.query(async ({ ctx }) => {
+    const db = await dbOrThrow();
+    const role = requireRole(ctx.user, ["admin", "operator", "store"]);
+    const rows = await db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt), desc(auditLogs.id));
+    return role === "store" ? rows.filter(row => row.actorOpenId === ctx.user.openId) : rows;
+  }),
+
   getReportTemplate: protectedProcedure.query(async () => {
     const db = await dbOrThrow();
     const [template] = await db.select().from(reportTemplates).where(eq(reportTemplates.templateKey, "daily-report")).limit(1);
@@ -201,6 +218,7 @@ export const workspaceRouter = router({
     else { const [created] = await db.insert(reportTemplates).values({ templateKey: "daily-report", name: input.name, description: input.description, updatedBy: ctx.user.name || "未命名用户" }).$returningId(); templateId = created.id; }
     await db.delete(reportTemplateFields).where(eq(reportTemplateFields.templateId, templateId));
     await db.insert(reportTemplateFields).values(input.fields.map((field, index) => ({ templateId: templateId!, ...field, sortOrder: index })));
+    await writeAudit(db, ctx.user, "发布日报模板", "日报模板", `${input.name} · ${input.fields.length} 个字段`);
     return { success: true } as const;
   }),
 
@@ -210,6 +228,7 @@ export const workspaceRouter = router({
     if (input.role === "store" && !input.storeName) throw new TRPCError({ code: "BAD_REQUEST", message: "店长必须绑定门店" });
     const db = await dbOrThrow();
     await db.update(users).set({ role: input.role, storeName: input.role === "store" ? input.storeName : null }).where(eq(users.id, input.id));
+    await writeAudit(db, ctx.user, "修改用户权限", `用户 #${input.id}`, `${input.role}${input.storeName ? ` · ${input.storeName}` : ""}`);
     return { success: true } as const;
   }),
 
