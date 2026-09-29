@@ -6,6 +6,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { getDb, ensureOneiraSeedData } from "./db";
+import { workspaceRouter } from "./routers.workspace";
 import {
   appSettings,
   dailyReports,
@@ -61,6 +62,7 @@ const ensureManagerPin = async (db: Awaited<ReturnType<typeof dbOrThrow>>) => {
 
 export const appRouter = router({
   system: systemRouter,
+  workspace: workspaceRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
