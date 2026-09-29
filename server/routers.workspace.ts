@@ -148,6 +148,16 @@ export const workspaceRouter = router({
     return { id: created.id };
   }),
 
+  updateRetrospective: protectedProcedure.input(z.object({ id: z.number().int().positive(), data: z.object({ title: z.string().min(1).max(160), body: z.string().min(1).max(10000), tags: z.array(z.string().max(40)).max(8), mood: z.enum(["顺利", "有收获", "需跟进"]) }) })).mutation(async ({ ctx, input }) => {
+    const db = await dbOrThrow();
+    const [row] = await db.select().from(retrospectives).where(eq(retrospectives.id, input.id)).limit(1);
+    if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "复盘不存在" });
+    if (getAppRole(ctx.user) === "store") { requireStoreScope(ctx.user, row.storeName); if (row.authorOpenId !== ctx.user.openId) throw new TRPCError({ code: "FORBIDDEN", message: "只能编辑自己创建的复盘" }); } else requireRole(ctx.user, ["admin", "operator"]);
+    await db.update(retrospectives).set({ title: input.data.title, body: input.data.body, tags: JSON.stringify(input.data.tags), mood: input.data.mood }).where(eq(retrospectives.id, input.id));
+    await writeAudit(db, ctx.user, "编辑复盘备忘", `复盘 #${input.id}`, input.data.title);
+    return { success: true } as const;
+  }),
+
   deleteRetrospective: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
     const db = await dbOrThrow();
     const [row] = await db.select().from(retrospectives).where(eq(retrospectives.id, input.id)).limit(1);
