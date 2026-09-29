@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { collaborationItems, collaborationReplies, dailyReports, retrospectives, specialDates, stores } from "../drizzle/schema";
+import { collaborationItems, collaborationReplies, dailyReports, retrospectives, specialDates, stores, users } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getAppRole, canEditStoreRecord, requireRole, requireStoreScope } from "./permissions";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -175,6 +175,47 @@ export const workspaceRouter = router({
     const db = await dbOrThrow();
     const result = await db.delete(specialDates).where(eq(specialDates.id, input.id));
     if (!result[0]?.affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "特殊日期不存在" });
+    return { success: true } as const;
+  }),
+
+  adminListUsers: protectedProcedure.query(async ({ ctx }) => {
+    requireRole(ctx.user, ["admin"]);
+    const db = await dbOrThrow();
+    return db.select({ id: users.id, openId: users.openId, name: users.name, email: users.email, role: users.role, storeName: users.storeName, lastSignedIn: users.lastSignedIn }).from(users).orderBy(users.name);
+  }),
+
+  adminUpdateUser: protectedProcedure.input(z.object({ id: z.number().int().positive(), role: z.enum(["user", "admin", "operator", "store"]), storeName: z.string().max(120).nullable().optional() })).mutation(async ({ ctx, input }) => {
+    requireRole(ctx.user, ["admin"]);
+    if (input.id === ctx.user.id && input.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "不能移除当前管理员自己的管理员权限" });
+    if (input.role === "store" && !input.storeName) throw new TRPCError({ code: "BAD_REQUEST", message: "店长必须绑定门店" });
+    const db = await dbOrThrow();
+    await db.update(users).set({ role: input.role, storeName: input.role === "store" ? input.storeName : null }).where(eq(users.id, input.id));
+    return { success: true } as const;
+  }),
+
+  adminCreateStore: protectedProcedure.input(z.object({ name: z.string().min(1).max(120), managerName: z.string().min(1).max(80), monthlyTargetWan: z.number().nonnegative().default(0), status: z.enum(["正常运营", "筹备中", "装修中"]).default("正常运营"), openingDate: z.string().optional() })).mutation(async ({ ctx, input }) => {
+    requireRole(ctx.user, ["admin"]);
+    const db = await dbOrThrow();
+    const [created] = await db.insert(stores).values(input).$returningId();
+    return { id: created.id };
+  }),
+
+  adminUpdateStore: protectedProcedure.input(z.object({ id: z.number().int().positive(), data: z.object({ name: z.string().min(1).max(120).optional(), managerName: z.string().min(1).max(80).optional(), monthlyTargetWan: z.number().nonnegative().optional(), status: z.enum(["正常运营", "筹备中", "装修中"]).optional(), openingDate: z.string().nullable().optional() }) })).mutation(async ({ ctx, input }) => {
+    requireRole(ctx.user, ["admin"]);
+    const db = await dbOrThrow();
+    const result = await db.update(stores).set(input.data).where(eq(stores.id, input.id));
+    if (!result[0]?.affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "门店不存在" });
+    return { success: true } as const;
+  }),
+
+  adminDeleteStore: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    requireRole(ctx.user, ["admin"]);
+    const db = await dbOrThrow();
+    const [store] = await db.select({ name: stores.name }).from(stores).where(eq(stores.id, input.id)).limit(1);
+    if (!store) throw new TRPCError({ code: "NOT_FOUND", message: "门店不存在" });
+    const [report] = await db.select({ id: dailyReports.id }).from(dailyReports).where(eq(dailyReports.storeName, store.name)).limit(1);
+    if (report) throw new TRPCError({ code: "CONFLICT", message: "该门店已有日报记录，不能直接删除" });
+    await db.delete(stores).where(eq(stores.id, input.id));
     return { success: true } as const;
   }),
 });
