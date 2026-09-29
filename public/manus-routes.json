@@ -1,0 +1,8 @@
+{
+  "routes": [
+    { "path": "/", "title": "ONEIRA 运营中台入口" },
+    { "path": "/admin", "title": "管理员工作台" },
+    { "path": "/operations", "title": "运营工作台" },
+    { "path": "/store", "title": "店长工作台" }
+  ]
+}
