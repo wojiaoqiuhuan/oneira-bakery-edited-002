@@ -17,6 +17,8 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useAuth } from "../_core/hooks/useAuth";
+import { trpc } from "../lib/trpc";
 import type { AppData, ReportField, SpecialDate, WorkspaceView } from "../types";
 import { Button, CalendarView, Card, EmptyState, Field, IconButton, SearchField, SectionHeader, StatCard, StatusPill } from "../components/UiKit";
 
@@ -25,6 +27,9 @@ const toneForStatus = (status: string) => status === "已回复" || status === "
 const money = (value: number) => `¥${value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function AdminWorkspace({ data, view, onChange, onFlash, onNavigate }: { data: AppData; view: WorkspaceView; onChange: Dispatch<SetStateAction<AppData>>; onFlash: (message: string) => void; onNavigate: (view: WorkspaceView) => void }) {
+  const auth = useAuth();
+  const remoteMe = trpc.workspace.me.useQuery(undefined, { enabled: auth.isAuthenticated, retry: false });
+  const deleteRemoteReport = trpc.workspace.deleteReport.useMutation();
   const [panel, setPanelState] = useState<WorkspaceView>(view);
   useEffect(() => setPanelState(view), [view]);
   const setPanel = (next: WorkspaceView) => { setPanelState(next); onNavigate(next); };
@@ -38,7 +43,7 @@ export default function AdminWorkspace({ data, view, onChange, onFlash, onNaviga
   const enabledFields = data.template.fields.filter(field => field.enabled).length;
   const filteredReports = useMemo(() => data.reports.filter(item => `${item.storeName}${item.reporter}${item.date}`.toLowerCase().includes(query.toLowerCase())), [data.reports, query]);
   const audit = (action: string, target: string, detail: string) => onChange(current => ({ ...current, auditLogs: [{ id: Date.now(), action, actor: "管理员", role: "admin", target, detail, createdAt: "刚刚" }, ...current.auditLogs] }));
-  const removeReport = (id: number) => { onChange(current => ({ ...current, reports: current.reports.filter(item => item.id !== id) })); audit("删除日报", `日报 #${id}`, "管理员删除了一条日报记录"); onFlash("日报已删除，审计记录已生成"); };
+  const removeReport = async (id: number) => { if (remoteMe.data?.role === "admin") { try { await deleteRemoteReport.mutateAsync({ id }); } catch (error) { onFlash(error instanceof Error ? error.message : "服务端删除失败"); return; } } onChange(current => ({ ...current, reports: current.reports.filter(item => item.id !== id) })); audit("删除日报", `日报 #${id}`, "管理员删除了一条日报记录"); onFlash(remoteMe.data?.role === "admin" ? "日报已删除并同步服务端" : "日报已删除，审计记录已生成"); };
   const removeEvent = (id: number) => { onChange(current => ({ ...current, specialDates: current.specialDates.filter(item => item.id !== id) })); audit("删除特殊日期", `标注 #${id}`, "管理员删除了日历标注"); onFlash("特殊日期已删除"); };
   const saveEvent = () => { if (!draftEvent?.date || !draftEvent.label) return; const event = { id: Date.now(), date: draftEvent.date, label: draftEvent.label, type: draftEvent.type || "活动日", note: draftEvent.note || "", stores: draftEvent.stores || ["全部门店"] } as SpecialDate; onChange(current => ({ ...current, specialDates: [...current.specialDates, event] })); audit("新增特殊日期", event.date, event.label); setDraftEvent(null); onFlash("特殊日期已添加"); };
   const updateField = (field: ReportField, changes: Partial<ReportField>) => { onChange(current => ({ ...current, template: { ...current.template, updatedAt: "刚刚", fields: current.template.fields.map(item => item.id === field.id ? { ...item, ...changes } : item) } })); audit("编辑日报模板", data.template.name, `${field.label} · ${Object.keys(changes).join(" / ")}`); };
