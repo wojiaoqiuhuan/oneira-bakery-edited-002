@@ -21,6 +21,7 @@ import { useAuth } from "../_core/hooks/useAuth";
 import { trpc } from "../lib/trpc";
 import type { AppData, DailyReport, ReportField, SpecialDate, WorkspaceView } from "../types";
 import { Button, CalendarView, Card, EmptyState, Field, IconButton, SearchField, SectionHeader, StatCard, StatusPill } from "../components/UiKit";
+import { GoalsAndSummaries } from "../components/GoalsAndSummaries";
 
 const roleLabel = { admin: "管理员", operator: "运营", store: "店长" } as const;
 const toneForStatus = (status: string) => status === "已回复" || status === "已解决" ? "green" : status === "处理中" ? "blue" : "orange";
@@ -71,7 +72,7 @@ export default function AdminWorkspace({ data, view, onChange, onFlash, onNaviga
     {panel === "templates" && <TemplateManager data={data} newField={newField} setNewField={setNewField} addField={addField} updateField={updateField} moveField={moveField} onFlash={onFlash} onPublish={publishTemplate} />}
     {panel === "management" && <AdminManagement onFlash={onFlash} />}
     {panel === "reports" && <BusinessData data={data} kind={kind} setKind={setKind} query={query} setQuery={setQuery} filteredReports={filteredReports} removeReport={removeReport} onFlash={onFlash} onEditReport={setEditingReport} onEditEvent={setDraftEvent} />}
-    {panel === "calendar" && <AdminCalendar data={data} selectedDate={selectedDate} setSelectedDate={setSelectedDate} draftEvent={draftEvent} setDraftEvent={setDraftEvent} saveEvent={saveEvent} removeEvent={removeEvent} />}
+    {panel === "calendar" && <><AdminCalendar data={data} selectedDate={selectedDate} setSelectedDate={setSelectedDate} draftEvent={draftEvent} setDraftEvent={setDraftEvent} saveEvent={saveEvent} removeEvent={removeEvent} /><GoalsAndSummaries data={data} role="admin" onFlash={onFlash} /></>}
     {panel === "audit" && <AuditView data={data} query={query} setQuery={setQuery} />}
     {panel === "collaboration" && <BusinessData data={data} kind="collaboration" setKind={setKind} query={query} setQuery={setQuery} filteredReports={filteredReports} removeReport={removeReport} onFlash={onFlash} />}
     {panel === "retrospectives" && <BusinessData data={data} kind="retrospectives" setKind={setKind} query={query} setQuery={setQuery} filteredReports={filteredReports} removeReport={removeReport} onFlash={onFlash} />}

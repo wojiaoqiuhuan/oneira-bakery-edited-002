@@ -87,7 +87,7 @@ export default function App() {
   };
   const enter = (next: Session) => { setSession(next); setView("overview"); window.history.replaceState({}, "", next.role === "admin" ? "/admin" : next.role === "operator" ? "/operations" : "/store"); };
   const logout = async () => { if (auth.isAuthenticated) { try { await auth.logout(); } catch {} } setSession(null); setView("overview"); window.history.replaceState({}, "", "/"); };
-  const switchAccount = async () => { await logout(); showFlash("请选择新的登录角色和门店"); };
+  const switchAccount = async () => { await logout(); window.location.assign("/?switch=1"); };
   const activeSession = realSession || session;
   if (auth.loading || (auth.isAuthenticated && remoteMe.isLoading)) return <div className="access-page"><div className="access-card"><span className="eyebrow">ONEIRA OPS</span><h2>正在验证工作台权限</h2><p>正在读取口令会话、角色和门店范围，请稍候。</p></div></div>;
   if (!activeSession) return <AccessPage onEnter={enter} />;

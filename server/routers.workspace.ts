@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { auditLogs, collaborationItems, collaborationReplies, dailyReports, reportTemplateFields, reportTemplates, retrospectives, specialDates, stores, users } from "../drizzle/schema";
+import { auditLogs, collaborationItems, collaborationReplies, dailyReports, monthlyTargets, openingNodes, operationSummaries, reportTemplateFields, reportTemplates, retrospectives, specialDates, stores, users } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getAppRole, canEditStoreRecord, requireRole, requireStoreScope } from "./permissions";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -54,6 +54,40 @@ export const workspaceRouter = router({
     return getAppRole(ctx.user) === "store" ? rows.filter(row => row.name === ctx.user.storeName) : rows;
   }),
 
+  listTargets: protectedProcedure.input(z.object({ storeName: z.string().optional(), month: z.string().optional() }).optional()).query(async ({ ctx, input }) => {
+    const db = await dbOrThrow(); const requestedStore = input?.storeName || (getAppRole(ctx.user) === "store" ? ctx.user.storeName : undefined); if (requestedStore) requireStoreScope(ctx.user, requestedStore);
+    const filters = []; if (requestedStore) filters.push(eq(monthlyTargets.storeName, requestedStore)); if (input?.month) filters.push(eq(monthlyTargets.month, input.month));
+    return db.select().from(monthlyTargets).where(filters.length ? and(...filters) : undefined).orderBy(desc(monthlyTargets.month));
+  }),
+
+  upsertTarget: protectedProcedure.input(z.object({ storeName: z.string().min(1), month: z.string().regex(/^\d{4}-\d{2}$/), monthlyTarget: z.number().nonnegative(), week1: z.number().nonnegative(), week2: z.number().nonnegative(), week3: z.number().nonnegative(), week4: z.number().nonnegative(), week5: z.number().nonnegative() })).mutation(async ({ ctx, input }) => {
+    requireRole(ctx.user, ["admin", "operator", "store"]); requireStoreScope(ctx.user, input.storeName); const db = await dbOrThrow();
+    const [old] = await db.select({ id: monthlyTargets.id }).from(monthlyTargets).where(and(eq(monthlyTargets.storeName, input.storeName), eq(monthlyTargets.month, input.month))).limit(1);
+    if (old) await db.update(monthlyTargets).set(input).where(eq(monthlyTargets.id, old.id)); else await db.insert(monthlyTargets).values(input);
+    await writeAudit(db, ctx.user, "更新月度目标", `${input.storeName} · ${input.month}`, `月目标 ${input.monthlyTarget}`); return { success: true } as const;
+  }),
+
+  listTasks: protectedProcedure.input(z.object({ storeName: z.string().optional() }).optional()).query(async ({ ctx, input }) => {
+    const db = await dbOrThrow(); const requestedStore = input?.storeName || (getAppRole(ctx.user) === "store" ? ctx.user.storeName : undefined); if (requestedStore) requireStoreScope(ctx.user, requestedStore);
+    return db.select().from(openingNodes).where(requestedStore ? eq(openingNodes.storeName, requestedStore) : undefined).orderBy(openingNodes.planDate, openingNodes.id);
+  }),
+
+  createTask: protectedProcedure.input(z.object({ storeName: z.string().min(1), nodeName: z.string().min(1).max(160), planDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), owner: z.string().min(1).max(80) })).mutation(async ({ ctx, input }) => {
+    requireRole(ctx.user, ["admin", "operator"]); const db = await dbOrThrow(); const [created] = await db.insert(openingNodes).values({ ...input, status: "未开始", completed: false }).$returningId(); await writeAudit(db, ctx.user, "下发门店任务", `${input.storeName} · ${input.planDate}`, input.nodeName); return { id: created.id };
+  }),
+
+  updateTask: protectedProcedure.input(z.object({ id: z.number().int().positive(), status: z.enum(["未开始", "进行中", "已完成"]), completed: z.boolean() })).mutation(async ({ ctx, input }) => {
+    const db = await dbOrThrow(); const [task] = await db.select().from(openingNodes).where(eq(openingNodes.id, input.id)).limit(1); if (!task) throw new TRPCError({ code: "NOT_FOUND", message: "任务不存在" }); requireStoreScope(ctx.user, task.storeName); await db.update(openingNodes).set({ status: input.status, completed: input.completed }).where(eq(openingNodes.id, input.id)); return { success: true } as const;
+  }),
+
+  listSummaries: protectedProcedure.input(z.object({ storeName: z.string().optional() }).optional()).query(async ({ ctx, input }) => {
+    const db = await dbOrThrow(); const requestedStore = input?.storeName || (getAppRole(ctx.user) === "store" ? ctx.user.storeName : undefined); if (requestedStore) requireStoreScope(ctx.user, requestedStore); return db.select().from(operationSummaries).where(requestedStore ? eq(operationSummaries.storeName, requestedStore) : undefined).orderBy(desc(operationSummaries.period));
+  }),
+
+  upsertSummary: protectedProcedure.input(z.object({ storeName: z.string().min(1), period: z.string().min(1).max(20), type: z.enum(["日报", "周报", "月报"]), summary: z.string().min(1), plan: z.string().min(1) })).mutation(async ({ ctx, input }) => {
+    requireStoreScope(ctx.user, input.storeName); const db = await dbOrThrow(); const [old] = await db.select({ id: operationSummaries.id }).from(operationSummaries).where(and(eq(operationSummaries.storeName, input.storeName), eq(operationSummaries.period, input.period), eq(operationSummaries.type, input.type))).limit(1); if (old) await db.update(operationSummaries).set(input).where(eq(operationSummaries.id, old.id)); else await db.insert(operationSummaries).values(input); await writeAudit(db, ctx.user, "保存周期总结", `${input.storeName} · ${input.type} · ${input.period}`, input.summary); return { success: true } as const;
+  }),
+
   listReports: protectedProcedure
     .input(z.object({ storeName: z.string().optional(), startDate: z.string().optional(), endDate: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
@@ -92,10 +126,14 @@ export const workspaceRouter = router({
   }),
 
   deleteReport: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
-    requireRole(ctx.user, ["admin"]);
     const db = await dbOrThrow();
+    const [old] = await db.select().from(dailyReports).where(eq(dailyReports.id, input.id)).limit(1);
+    if (!old) throw new TRPCError({ code: "NOT_FOUND", message: "日报不存在" });
+    const role = canEditStoreRecord(ctx.user, old.storeName, old.reporter);
+    if (role !== "admin" && role !== "store") throw new TRPCError({ code: "FORBIDDEN", message: "运营不能删除日报" });
     const result = await db.delete(dailyReports).where(eq(dailyReports.id, input.id));
     if (!result[0]?.affectedRows) throw new TRPCError({ code: "NOT_FOUND", message: "日报不存在" });
+    await writeAudit(db, ctx.user, "删除日报", `${old.storeName} · ${old.reportDate}`, "删除本人提交的日报");
     return { success: true } as const;
   }),
 

@@ -157,3 +157,25 @@ input, textarea, select { width: 100%; color: var(--ink); border: 1px solid var(
 .admin-report-editor .form-title strong, .admin-report-editor .form-title small { display: block; }
 .admin-report-editor .form-title strong { margin-top: 7px; font-size: 19px; }
 .admin-report-editor .form-title small { margin-top: 5px; color: var(--muted); font-size: 11px; }
+.goals-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.goals-summary-grid .summary-card { grid-column: 1 / -1; }
+.goal-toolbar, .task-create { display: flex; gap: 8px; margin: 16px 0; }
+.goal-toolbar > *, .task-create > * { flex: 1; min-width: 0; height: 36px; }
+.goal-progress { display: grid; grid-template-columns: repeat(3, 1fr) auto; align-items: end; gap: 10px; padding: 14px; background: #fbf6f0; border-radius: 14px; }
+.goal-progress span, .goal-progress b { display: block; }
+.goal-progress span { color: var(--muted); font-size: 10px; }
+.goal-progress b { margin-top: 5px; font-size: 17px; }
+.goal-edit-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+.goal-edit-grid .field > span { font-size: 9px; }
+.goal-edit-grid input { height: 34px; }
+.task-list { display: grid; gap: 6px; }
+.task-row { display: flex; align-items: center; gap: 9px; padding: 10px; background: #fbf7f2; border-radius: 11px; }
+.task-row input { width: 16px; height: 16px; }
+.task-row span { flex: 1; min-width: 0; }
+.task-row strong, .task-row small { display: block; }
+.task-row strong { font-size: 11px; }
+.task-row small { margin-top: 3px; color: var(--muted); font-size: 9px; }
+.summary-form { display: grid; gap: 10px; margin-top: 14px; }
+.summary-history { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 10px; }
+.summary-history span { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 780px) { .goals-summary-grid { grid-template-columns: 1fr; } .goals-summary-grid .summary-card { grid-column: auto; } .goal-progress { grid-template-columns: repeat(2, 1fr); } .goal-edit-grid { grid-template-columns: repeat(2, 1fr); } .task-create { flex-wrap: wrap; } }
