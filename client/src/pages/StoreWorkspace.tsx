@@ -22,7 +22,7 @@ import { trpc } from "../lib/trpc";
 import type { AppData, CollaborationItem, DailyReport, ReportField, Retrospective, Session, WorkspaceView } from "../types";
 import { Button, CalendarView, Card, EmptyState, Field, SearchField, SectionHeader, StatCard, StatusPill, Textarea } from "../components/UiKit";
 import { ReportSummary } from "../components/ReportSummary";
-import { GoalsAndSummaries } from "../components/GoalsAndSummaries";
+import { DailyTargetBoard, GoalsAndSummaries } from "../components/GoalsAndSummaries";
 
 const money = (value: number) => `¥${value.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const today = "2026-09-29";
@@ -78,7 +78,7 @@ export default function StoreWorkspace({ data, view, onChange, onFlash, session,
     {panel === "overview" && <StoreOverview storeName={storeName} fields={data.template.fields} reports={reports} threads={threads} retros={retros} onPanel={setPanel} onEdit={fillFromReport} onCopy={copyReport} />}
     {panel === "reports" && <StoreReportForm data={data} draft={reportDraft} setDraft={setReportDraft} editingReport={editingReport} onSave={saveReport} onCancel={() => { setEditingReport(null); setPanel("overview"); }} onCopy={copyReport} onDelete={deleteReport} reports={reports} copyPreview={copyPreview} />}
     {panel === "collaboration" && <StoreCollaboration threads={threads} type={threadType} setType={setThreadType} title={threadTitle} setTitle={setThreadTitle} body={threadBody} setBody={setThreadBody} onSubmit={submitThread} />}
-    {panel === "calendar" && <><StoreCalendar data={data} storeName={storeName} /><GoalsAndSummaries data={data} role="store" storeName={storeName} onFlash={onFlash} /></>}
+    {panel === "calendar" && <><DailyTargetBoard data={data} role="store" storeName={storeName} /><StoreCalendar data={data} storeName={storeName} /><GoalsAndSummaries data={data} role="store" storeName={storeName} onFlash={onFlash} /></>}
     {panel === "retrospectives" && <StoreRetrospectives retros={visibleRetros} query={query} setQuery={setQuery} title={retroTitle} setTitle={setRetroTitle} body={retroBody} setBody={setRetroBody} tags={retroTags} setTags={setRetroTags} onSave={saveRetro} editing={editingRetro} onEdit={editRetro} onDelete={deleteRetro} />}
   </div>;
 }
