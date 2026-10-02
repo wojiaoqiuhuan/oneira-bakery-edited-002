@@ -206,3 +206,32 @@ input, textarea, select { width: 100%; color: var(--ink); border: 1px solid var(
 .goal-save-cell { display: flex; align-items: end; }
 @media (max-width: 780px) { .daily-target-board-head { display: grid; } .daily-target-board-filters { width: 100%; } .daily-target-board-filters > * { flex: 1; width: auto; } .daily-target-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 780px) { .goals-summary-grid { grid-template-columns: 1fr; } .goals-summary-grid .summary-card { grid-column: auto; } .goal-progress { grid-template-columns: repeat(2, 1fr); } .goal-edit-grid { grid-template-columns: repeat(2, 1fr); } .task-create { flex-wrap: wrap; } }
+
+/* One calendar-first target view */
+.daily-target-calendar-card { overflow: hidden; }
+.daily-target-calendar-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.daily-target-calendar-head h3 { margin: 7px 0 4px; font-size: 20px; }
+.daily-target-calendar-head p { margin: 0; color: var(--muted); font-size: 11px; }
+.daily-target-calendar-tools { display: flex; align-items: center; gap: 7px; }
+.daily-target-calendar-tools select, .daily-target-calendar-tools input { width: 132px; height: 34px; }
+.calendar-month-arrow { display: grid; width: 30px; height: 30px; place-items: center; color: var(--ink); background: #fbf5ee; border: 1px solid #eadfd5; border-radius: 9px; font-size: 20px; cursor: pointer; }
+.daily-target-calendar-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 14px; }
+.daily-target-calendar-meta span { padding: 8px 11px; color: var(--muted); background: #fbf6f0; border-radius: 9px; font-size: 10px; }
+.daily-target-calendar-meta b { margin-left: 4px; color: var(--ink); font-size: 12px; }
+.daily-target-weekdays, .daily-target-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 7px; }
+.daily-target-weekdays { margin-bottom: 7px; color: #a99a8e; font-size: 10px; text-align: center; }
+.daily-target-calendar-day, .daily-target-blank { min-width: 0; min-height: 104px; }
+.daily-target-calendar-day { padding: 9px 8px; color: inherit; background: #fcfaf7; border: 1px solid #eee5dc; border-radius: 12px; text-align: left; cursor: pointer; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+.daily-target-calendar-day:hover, .daily-target-calendar-day.is-selected { border-color: #e7a47c; box-shadow: 0 8px 18px rgba(231,111,60,.1); transform: translateY(-2px); }
+.daily-target-calendar-day.is-complete { background: linear-gradient(145deg, #f7fcf8, #fffaf6); }
+.daily-target-calendar-day-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.daily-target-calendar-day-top b { font-size: 14px; }
+.daily-target-calendar-day-top .status-pill { padding: 3px 5px; font-size: 8px; }
+.daily-target-calendar-day strong { display: block; margin-top: 10px; font-size: 13px; }
+.daily-target-calendar-day small { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.daily-target-selected { display: grid; grid-template-columns: minmax(180px, 1.8fr) repeat(3, 1fr); gap: 12px; align-items: center; margin-top: 16px; padding: 14px 16px; background: #fffaf5; border: 1px solid #f0e4d8; border-radius: 12px; }
+.daily-target-selected > div { display: grid; gap: 4px; }
+.daily-target-selected strong { font-size: 13px; }
+.daily-target-selected small, .daily-target-selected span { color: var(--muted); font-size: 10px; }
+.daily-target-selected b { font-size: 15px; }
+@media (max-width: 780px) { .daily-target-calendar-head { display: grid; } .daily-target-calendar-tools { width: 100%; } .daily-target-calendar-tools > input { flex: 1; width: auto; } .daily-target-calendar-grid, .daily-target-weekdays { gap: 4px; } .daily-target-calendar-day, .daily-target-blank { min-height: 90px; } .daily-target-calendar-day { padding: 7px 5px; border-radius: 9px; } .daily-target-calendar-day strong { margin-top: 7px; font-size: 11px; } .daily-target-calendar-day small { font-size: 8px; } .daily-target-selected { grid-template-columns: 1fr 1fr; } }
