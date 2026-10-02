@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { auditLogs, collaborationItems, collaborationReplies, dailyReports, monthlyTargets, openingNodes, operationSummaries, reportTemplateFields, reportTemplates, retrospectives, specialDates, stores, users } from "../drizzle/schema";
+import { auditLogs, collaborationItems, collaborationReplies, dailyReports, dailyTargets, monthlyTargets, openingNodes, operationSummaries, reportTemplateFields, reportTemplates, retrospectives, specialDates, stores, users } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getAppRole, canEditStoreRecord, requireRole, requireStoreScope } from "./permissions";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -58,6 +58,16 @@ export const workspaceRouter = router({
     const db = await dbOrThrow(); const requestedStore = input?.storeName || (getAppRole(ctx.user) === "store" ? ctx.user.storeName : undefined); if (requestedStore) requireStoreScope(ctx.user, requestedStore);
     const filters = []; if (requestedStore) filters.push(eq(monthlyTargets.storeName, requestedStore)); if (input?.month) filters.push(eq(monthlyTargets.month, input.month));
     return db.select().from(monthlyTargets).where(filters.length ? and(...filters) : undefined).orderBy(desc(monthlyTargets.month));
+  }),
+
+  listDailyTargets: protectedProcedure.input(z.object({ storeName: z.string().optional(), month: z.string().regex(/^\d{4}-\d{2}$/) })).query(async ({ ctx, input }) => {
+    const db = await dbOrThrow(); const requestedStore = input.storeName || (getAppRole(ctx.user) === "store" ? ctx.user.storeName : undefined); if (requestedStore) requireStoreScope(ctx.user, requestedStore);
+    return db.select().from(dailyTargets).where(and(eq(dailyTargets.storeName, requestedStore || ""), gte(dailyTargets.targetDate, `${input.month}-01`), lte(dailyTargets.targetDate, `${input.month}-31`))).orderBy(dailyTargets.targetDate);
+  }),
+
+  upsertDailyTarget: protectedProcedure.input(z.object({ storeName: z.string().min(1), targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), targetAmount: z.number().nonnegative() })).mutation(async ({ ctx, input }) => {
+    requireRole(ctx.user, ["admin", "operator", "store"]); requireStoreScope(ctx.user, input.storeName); const db = await dbOrThrow(); const [old] = await db.select({ id: dailyTargets.id }).from(dailyTargets).where(and(eq(dailyTargets.storeName, input.storeName), eq(dailyTargets.targetDate, input.targetDate))).limit(1);
+    if (old) await db.update(dailyTargets).set({ targetAmount: input.targetAmount }).where(eq(dailyTargets.id, old.id)); else await db.insert(dailyTargets).values(input); await writeAudit(db, ctx.user, "更新每日目标", `${input.storeName} · ${input.targetDate}`, `目标 ¥${input.targetAmount}`); return { success: true } as const;
   }),
 
   upsertTarget: protectedProcedure.input(z.object({ storeName: z.string().min(1), month: z.string().regex(/^\d{4}-\d{2}$/), monthlyTarget: z.number().nonnegative(), week1: z.number().nonnegative(), week2: z.number().nonnegative(), week3: z.number().nonnegative(), week4: z.number().nonnegative(), week5: z.number().nonnegative() })).mutation(async ({ ctx, input }) => {
@@ -262,6 +272,14 @@ export const workspaceRouter = router({
     const builtIns = [
       { fieldId: "tastingAmount", label: "试吃金额", group: "经营数据" as const, required: false, enabled: true, copyToWechat: true },
       { fieldId: "praiseCount", label: "好评数", group: "经营数据" as const, required: false, enabled: true, copyToWechat: true },
+      { fieldId: "discountAmount", label: "优惠/折扣券合计", group: "经营数据" as const, required: false, enabled: true, copyToWechat: true },
+      { fieldId: "platformTotal", label: "合计平台收入", group: "经营数据" as const, required: false, enabled: true, copyToWechat: true },
+      { fieldId: "tastingQty", label: "试吃数量", group: "经营数据" as const, required: false, enabled: true, copyToWechat: true },
+      { fieldId: "wasteQty", label: "报损数量", group: "经营数据" as const, required: false, enabled: true, copyToWechat: true },
+      { fieldId: "tastingRatio", label: "试吃占比（自动）", group: "经营数据" as const, required: false, enabled: true, copyToWechat: true },
+      { fieldId: "wasteRatio", label: "报损占比（自动）", group: "经营数据" as const, required: false, enabled: true, copyToWechat: true },
+      { fieldId: "memberCardBalance", label: "会员实体卡余量", group: "经营数据" as const, required: false, enabled: true, copyToWechat: true },
+      { fieldId: "giftProduct", label: "赠送产品数量", group: "经营数据" as const, required: false, enabled: true, copyToWechat: true },
     ];
     const existingIds = new Set(fields.map(field => field.fieldId));
     return { ...template, fields: [...fields, ...builtIns.filter(field => !existingIds.has(field.fieldId)).map((field, index) => ({ ...field, id: -(index + 1), templateId: template.id, sortOrder: fields.length + index }))] };

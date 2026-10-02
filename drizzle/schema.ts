@@ -122,6 +122,20 @@ export const monthlyTargets = mysqlTable(
   })
 );
 
+export const dailyTargets = mysqlTable(
+  "oneira_daily_targets",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    storeName: varchar("storeName", { length: 120 }).notNull(),
+    targetDate: varchar("targetDate", { length: 10 }).notNull(),
+    targetAmount: double("targetAmount").default(0).notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    storeDateUnique: uniqueIndex("oneira_daily_target_store_date_unique").on(table.storeName, table.targetDate),
+  })
+);
+
 export const productRanks = mysqlTable("oneira_product_ranks", {
   id: int("id").autoincrement().primaryKey(),
   storeName: varchar("storeName", { length: 120 }).notNull(),

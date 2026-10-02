@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, ClipboardList, Target } from "lucide-react";
 import { trpc } from "../lib/trpc";
 import type { AppData, Role } from "../types";
@@ -46,6 +46,8 @@ export function DailyTargetBoard({ data, role, storeName, onSelectDate }: { data
   const [selectedStore, setSelectedStore] = useState(storeName || data.stores[0] || "");
   const [month, setMonth] = useState(monthNow);
   const targets = trpc.workspace.listTargets.useQuery({ storeName: selectedStore, month }, { enabled: Boolean(selectedStore), retry: false });
+  const dailyTargets = trpc.workspace.listDailyTargets.useQuery({ storeName: selectedStore, month }, { enabled: Boolean(selectedStore), retry: false });
+  const saveDailyTarget = trpc.workspace.upsertDailyTarget.useMutation({ onSuccess: () => dailyTargets.refetch() });
   const target = Number(targets.data?.[0]?.monthlyTarget || 0);
   const days = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
   const dailyTarget = target / Math.max(1, days);
@@ -53,7 +55,10 @@ export function DailyTargetBoard({ data, role, storeName, onSelectDate }: { data
     const date = `${month}-${String(index + 1).padStart(2, "0")}`;
     const reports = data.reports.filter(report => report.storeName === selectedStore && report.date === date);
     const actual = reports.reduce((sum, report) => sum + report.revenue, 0);
-    return { date, day: index + 1, actual, reports: reports.length, percent: dailyTarget ? Math.min(100, actual / dailyTarget * 100) : 0 };
+    const savedTarget = Number(dailyTargets.data?.find(item => item.targetDate === date)?.targetAmount || 0);
+    const dayTarget = savedTarget || dailyTarget;
+    return { date, day: index + 1, actual, reports: reports.length, target: dayTarget, percent: dayTarget ? Math.min(100, actual / dayTarget * 100) : 0 };
   });
-  return <Card className="daily-target-board"><div className="daily-target-board-head"><div><span className="eyebrow">DAILY BREAKDOWN</span><h3>每日目标分解</h3><p>点击日期查看当天日报、特殊标注和完成明细。</p></div><div className="daily-target-board-filters">{!storeName && <select value={selectedStore} onChange={e => setSelectedStore(e.target.value)}>{data.stores.map(item => <option key={item}>{item}</option>)}</select>}<input type="month" value={month} onChange={e => setMonth(e.target.value)} /></div></div><div className="daily-target-meta"><span>月目标 <b>{money(target)}</b></span><span>每日目标 <b>{money(dailyTarget)}</b></span><span>已提交 <b>{rows.filter(row => row.reports > 0).length}/{days} 天</b></span></div><div className="daily-target-grid">{rows.map(row => <button className={`daily-target-day ${row.actual >= dailyTarget && dailyTarget ? "is-complete" : ""}`} key={row.date} onClick={() => onSelectDate?.(row.date)}><div className="daily-target-day-top"><b>{row.day}</b><StatusPill label={row.reports ? "已报" : "待报"} tone={row.reports ? "green" : "neutral"} /></div><strong>{money(row.actual)}</strong><span>目标 {money(dailyTarget)}</span><i><em style={{ width: `${row.percent}%` }} /></i><small>{row.percent.toFixed(0)}% 完成</small></button>)}</div></Card>;
+  const updateDayTarget = async (date: string, value: string) => { if (role !== "admin" && role !== "operator") return; await saveDailyTarget.mutateAsync({ storeName: selectedStore, targetDate: date, targetAmount: Number(value || 0) }); };
+  return <Card className="daily-target-board"><div className="daily-target-board-head"><div><span className="eyebrow">DAILY BREAKDOWN</span><h3>每日目标分解</h3><p>点击日期查看当天日报、特殊标注和完成明细；管理员或运营可逐日设置不同目标。</p></div><div className="daily-target-board-filters">{!storeName && <select value={selectedStore} onChange={e => setSelectedStore(e.target.value)}>{data.stores.map(item => <option key={item}>{item}</option>)}</select>}<input type="month" value={month} onChange={e => setMonth(e.target.value)} /></div></div><div className="daily-target-meta"><span>月目标 <b>{money(target)}</b></span><span>默认日目标 <b>{money(dailyTarget)}</b></span><span>已提交 <b>{rows.filter(row => row.reports > 0).length}/{days} 天</b></span></div><div className="daily-target-grid">{rows.map(row => <button className={`daily-target-day ${row.actual >= row.target && row.target ? "is-complete" : ""}`} key={row.date} onClick={() => onSelectDate?.(row.date)}><div className="daily-target-day-top"><b>{row.day}</b><StatusPill label={row.reports ? "已报" : "待报"} tone={row.reports ? "green" : "neutral"} /></div><strong>{money(row.actual)}</strong>{role === "admin" || role === "operator" || role === "store" ? <input className="daily-target-input" type="number" defaultValue={row.target || ""} onClick={event => event.stopPropagation()} onBlur={event => void updateDayTarget(row.date, event.target.value)} /> : <span>目标 {money(row.target)}</span>}<i><em style={{ width: `${row.percent}%` }} /></i><small>{row.percent.toFixed(0)}% 完成</small></button>)}</div></Card>;
 }
