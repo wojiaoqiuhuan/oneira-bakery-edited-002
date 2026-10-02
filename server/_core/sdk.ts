@@ -318,7 +318,11 @@ class SDKServer {
       lastSignedIn: signedInAt,
     });
 
-    return user;
+    // PIN 门店账号可以被不同员工共用；以本次签发会话中的姓名作为日报提交人，
+    // 而不是被最后一次登录覆盖的 users.name。
+    return session.openId.startsWith("oneira-pin-store-") && session.name
+      ? { ...user, name: session.name }
+      : user;
   }
 }
 

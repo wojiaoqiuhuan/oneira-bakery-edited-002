@@ -116,8 +116,6 @@ export const workspaceRouter = router({
     const role = requireStoreScope(ctx.user, input.storeName);
     if (role !== "admin" && role !== "operator" && role !== "store") throw new TRPCError({ code: "FORBIDDEN", message: "当前角色不能提交日报" });
     const db = await dbOrThrow();
-    const existing = await db.select({ id: dailyReports.id }).from(dailyReports).where(and(eq(dailyReports.storeName, input.storeName), eq(dailyReports.reportDate, input.reportDate))).limit(1);
-    if (existing[0]) throw new TRPCError({ code: "CONFLICT", message: "该门店当天已经有日报" });
     const { customFields, ...reportValues } = input;
     const [created] = await db.insert(dailyReports).values({ ...reportValues, customMetrics: JSON.stringify(customFields), reporter: ctx.user.name || "未命名用户", submitted: true, issueStatus: input.issue ? "待处理" : "已解决" }).$returningId();
     await writeAudit(db, ctx.user, "提交日报", `${input.storeName} · ${input.reportDate}`, `实收 ${input.revenue}`);

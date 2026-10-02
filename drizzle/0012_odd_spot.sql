@@ -1,0 +1,1 @@
+ALTER TABLE `oneira_daily_reports` DROP INDEX `oneira_store_date_unique`;

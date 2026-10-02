@@ -72,12 +72,7 @@ export const dailyReports = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  table => ({
-    storeDateUnique: uniqueIndex("oneira_store_date_unique").on(
-      table.storeName,
-      table.reportDate
-    ),
-  })
+  table => ({})
 );
 
 export const appSettings = mysqlTable("oneira_app_settings", {

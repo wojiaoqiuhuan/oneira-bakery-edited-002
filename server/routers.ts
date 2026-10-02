@@ -72,7 +72,7 @@ export const appRouter = router({
   workspace: workspaceRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    loginWithPin: publicProcedure.input(z.object({ role: z.enum(["admin", "operator", "store"]), pin: z.string().regex(/^\d{4,12}$/, "口令需为 4-12 位数字"), storeName: z.string().optional() })).mutation(async ({ ctx, input }) => {
+    loginWithPin: publicProcedure.input(z.object({ role: z.enum(["admin", "operator", "store"]), pin: z.string().regex(/^\d{4,12}$/, "口令需为 4-12 位数字"), storeName: z.string().optional(), identityName: z.string().trim().min(1).max(40).optional() })).mutation(async ({ ctx, input }) => {
       await ensureOneiraSeedData();
       const db = await dbOrThrow();
       let openId = "oneira-pin-admin";
@@ -86,10 +86,11 @@ export const appRouter = router({
         if (input.pin !== await ensureManagerPin(db)) throw new TRPCError({ code: "UNAUTHORIZED", message: "运营口令不正确" });
       } else {
         if (!input.storeName) throw new TRPCError({ code: "BAD_REQUEST", message: "请选择门店" });
+        if (!input.identityName) throw new TRPCError({ code: "BAD_REQUEST", message: "请输入本次提交人姓名" });
         const [store] = await db.select({ name: stores.name, managerName: stores.managerName, loginPin: stores.loginPin }).from(stores).where(eq(stores.name, input.storeName)).limit(1);
         if (!store || input.pin !== store.loginPin) throw new TRPCError({ code: "UNAUTHORIZED", message: "门店口令不正确" });
         openId = `oneira-pin-store-${store.name}`;
-        name = store.managerName;
+        name = input.identityName;
         storeName = store.name;
       }
       await upsertUser({ openId, name, role: input.role, storeName, loginMethod: "pin", lastSignedIn: new Date() });

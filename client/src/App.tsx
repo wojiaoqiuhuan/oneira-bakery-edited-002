@@ -39,7 +39,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem("oneira-demo-data", JSON.stringify(data)); }, [data]);
   useEffect(() => { if (session) localStorage.setItem("oneira-demo-session", JSON.stringify(session)); else localStorage.removeItem("oneira-demo-session"); }, [session]);
   useEffect(() => {
-    if (!remoteReports.data || remoteSynced) return;
+    if (!remoteReports.data) return;
     const reports: DailyReport[] = remoteReports.data.map(report => ({
       id: report.id,
       storeName: report.storeName,
@@ -60,7 +60,7 @@ export default function App() {
     }));
     setData(current => ({ ...current, reports }));
     setRemoteSynced(true);
-    showFlash("已从服务端同步日报数据");
+    if (!remoteSynced) showFlash("已从服务端同步日报数据");
   }, [remoteReports.data, remoteSynced]);
   useEffect(() => {
     if (!remoteStores.data) return;
