@@ -57,13 +57,17 @@ export const workspaceRouter = router({
   listDailyTargets: protectedProcedure.query(async () => {
     const db = await dbOrThrow();
     const rows = await db.select({ settingKey: appSettings.settingKey, settingValue: appSettings.settingValue }).from(appSettings).where(like(appSettings.settingKey, "dailyTarget:%"));
-    return Object.fromEntries(rows.map(row => [row.settingKey.slice("dailyTarget:".length), Number(row.settingValue) || 0]));
+    return Object.fromEntries(rows.map(row => {
+      const value = row.settingKey.slice("dailyTarget:".length);
+      const separator = value.lastIndexOf(":");
+      return [separator > 0 ? `${value.slice(0, separator)}|${value.slice(separator + 1)}` : value, Number(row.settingValue) || 0];
+    }));
   }),
 
-  saveDailyTarget: protectedProcedure.input(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), target: z.number().nonnegative().max(100000000) })).mutation(async ({ ctx, input }) => {
+  saveDailyTarget: protectedProcedure.input(z.object({ storeName: z.string().min(1).max(120), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), target: z.number().nonnegative().max(100000000) })).mutation(async ({ ctx, input }) => {
     requireRole(ctx.user, ["admin", "operator"]);
     const db = await dbOrThrow();
-    const settingKey = `dailyTarget:${input.date}`;
+    const settingKey = `dailyTarget:${input.storeName}:${input.date}`;
     const [existing] = await db.select({ id: appSettings.id }).from(appSettings).where(eq(appSettings.settingKey, settingKey)).limit(1);
     if (existing) await db.update(appSettings).set({ settingValue: String(input.target) }).where(eq(appSettings.id, existing.id));
     else await db.insert(appSettings).values({ settingKey, settingValue: String(input.target) });
