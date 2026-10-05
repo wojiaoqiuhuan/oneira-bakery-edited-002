@@ -74,7 +74,7 @@ export function Textarea({ value, onChange, placeholder, rows = 4 }: { value: st
 
 const formatDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-export function CalendarView({ events, selectedDate, onSelect, editable = false, onAdd }: { events: SpecialDate[]; selectedDate: string; onSelect: (date: string) => void; editable?: boolean; onAdd?: (date: string) => void }) {
+export function CalendarView({ events, selectedDate, onSelect, editable = false, onAdd, dailyTargets = {}, dailyActuals = {} }: { events: SpecialDate[]; selectedDate: string; onSelect: (date: string) => void; editable?: boolean; onAdd?: (date: string) => void; dailyTargets?: Record<string, number>; dailyActuals?: Record<string, number> }) {
   const cursor = new Date(`${selectedDate.slice(0, 7)}-01T12:00:00`);
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -88,9 +88,10 @@ export function CalendarView({ events, selectedDate, onSelect, editable = false,
     <div className="calendar-toolbar"><div><span className="eyebrow">MOMENTS</span><h3>{monthTitle}</h3></div><div className="calendar-nav"><IconButton label="上个月" onClick={previous}>‹</IconButton><IconButton label="下个月" onClick={next}>›</IconButton></div></div>
     <div className="calendar-weekdays">{["日", "一", "二", "三", "四", "五", "六"].map(day => <span key={day}>{day}</span>)}</div>
     <div className="calendar-grid">{days.map(day => {
-      const date = formatDate(day); const dayEvents = events.filter(event => event.date === date); const outside = day.getMonth() !== month; const selected = selectedDate === date;
+      const date = formatDate(day); const dayEvents = events.filter(event => event.date === date); const outside = day.getMonth() !== month; const selected = selectedDate === date; const target = dailyTargets[date] || 0; const actual = dailyActuals[date] || 0; const rate = target ? Math.min(100, actual / target * 100) : 0;
       return <button key={date} type="button" className={`calendar-day ${outside ? "is-outside" : ""} ${selected ? "is-selected" : ""}`} onClick={() => onSelect(date)} onDoubleClick={() => editable && onAdd?.(date)}>
         <span className="calendar-day-number">{day.getDate()}</span>
+        {target > 0 && <span className="calendar-progress" title={`目标 ¥${target.toLocaleString("zh-CN")} · 完成 ${rate.toFixed(0)}%`}><i style={{ width: `${rate}%` }} /><small>{rate.toFixed(0)}%</small></span>}
         <span className="calendar-events">{dayEvents.slice(0, 2).map(event => <span key={event.id} className={`calendar-mark mark-${event.type === "节假日" ? "holiday" : event.type === "活动日" ? "activity" : "sales"}`}>{event.label}</span>)}{dayEvents.length > 2 && <span className="calendar-more">+{dayEvents.length - 2}</span>}</span>
       </button>;
     })}</div>

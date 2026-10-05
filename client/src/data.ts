@@ -2,6 +2,8 @@ import type { AppData } from "./types";
 
 export const demoData: AppData = {
   stores: ["西湖店", "滨江店", "钱江新城店", "城西店"],
+  monthlyTargetsWan: { "西湖店": 18, "滨江店": 16, "钱江新城店": 20, "城西店": 12 },
+  dailyTargets: { "2026-09-27": 18000, "2026-09-28": 22000, "2026-09-29": 20000, "2026-10-01": 22000 },
   template: {
     id: "daily-standard",
     name: "门店经营日报 · 标准版",

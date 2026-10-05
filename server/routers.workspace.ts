@@ -1,7 +1,7 @@
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, desc, eq, gte, like, lte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { auditLogs, collaborationItems, collaborationReplies, dailyReports, reportTemplateFields, reportTemplates, retrospectives, specialDates, stores, users } from "../drizzle/schema";
+import { appSettings, auditLogs, collaborationItems, collaborationReplies, dailyReports, reportTemplateFields, reportTemplates, retrospectives, specialDates, stores, users } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getAppRole, canEditStoreRecord, requireRole, requireStoreScope } from "./permissions";
 import { protectedProcedure, router } from "./_core/trpc";
@@ -52,6 +52,23 @@ export const workspaceRouter = router({
     const db = await dbOrThrow();
     const rows = await db.select({ id: stores.id, name: stores.name, managerName: stores.managerName, monthlyTargetWan: stores.monthlyTargetWan, status: stores.status, openingDate: stores.openingDate }).from(stores).orderBy(stores.name);
     return getAppRole(ctx.user) === "store" ? rows.filter(row => row.name === ctx.user.storeName) : rows;
+  }),
+
+  listDailyTargets: protectedProcedure.query(async () => {
+    const db = await dbOrThrow();
+    const rows = await db.select({ settingKey: appSettings.settingKey, settingValue: appSettings.settingValue }).from(appSettings).where(like(appSettings.settingKey, "dailyTarget:%"));
+    return Object.fromEntries(rows.map(row => [row.settingKey.slice("dailyTarget:".length), Number(row.settingValue) || 0]));
+  }),
+
+  saveDailyTarget: protectedProcedure.input(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), target: z.number().nonnegative().max(100000000) })).mutation(async ({ ctx, input }) => {
+    requireRole(ctx.user, ["admin", "operator"]);
+    const db = await dbOrThrow();
+    const settingKey = `dailyTarget:${input.date}`;
+    const [existing] = await db.select({ id: appSettings.id }).from(appSettings).where(eq(appSettings.settingKey, settingKey)).limit(1);
+    if (existing) await db.update(appSettings).set({ settingValue: String(input.target) }).where(eq(appSettings.id, existing.id));
+    else await db.insert(appSettings).values({ settingKey, settingValue: String(input.target) });
+    await writeAudit(db, ctx.user, "设置每日目标", input.date, `目标 ¥${input.target}`);
+    return { success: true } as const;
   }),
 
   listReports: protectedProcedure

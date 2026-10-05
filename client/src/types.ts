@@ -98,6 +98,8 @@ export type AuditLog = {
 
 export type AppData = {
   stores: string[];
+  monthlyTargetsWan?: Record<string, number>;
+  dailyTargets?: Record<string, number>;
   template: ReportTemplate;
   reports: DailyReport[];
   collaboration: CollaborationItem[];
