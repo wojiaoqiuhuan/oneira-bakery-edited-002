@@ -1,11 +1,14 @@
 import { and, desc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
+import { createHash } from "node:crypto";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { sdk } from "./_core/sdk";
+import { ENV } from "./_core/env";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { getDb, ensureOneiraSeedData } from "./db";
+import { getDb, ensureOneiraSeedData, upsertUser } from "./db";
 import { workspaceRouter } from "./routers.workspace";
 import {
   appSettings,
@@ -65,6 +68,35 @@ export const appRouter = router({
   workspace: workspaceRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    pinLogin: publicProcedure
+      .input(z.object({
+        role: z.enum(["admin", "operator", "store"]),
+        pin: z.string().min(1).max(32),
+        name: z.string().trim().min(1).max(80),
+        storeName: z.string().trim().min(1).max(120).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await ensureOneiraSeedData();
+        const db = await dbOrThrow();
+        let valid = false;
+        if (input.role === "admin") {
+          valid = input.pin === "1688";
+        } else if (input.role === "operator") {
+          valid = input.pin === await ensureManagerPin(db);
+        } else {
+          if (!input.storeName) throw new TRPCError({ code: "BAD_REQUEST", message: "请选择门店" });
+          const [store] = await db.select({ id: stores.id, loginPin: stores.loginPin }).from(stores).where(eq(stores.name, input.storeName)).limit(1);
+          if (!store) throw new TRPCError({ code: "NOT_FOUND", message: "门店不存在" });
+          valid = input.pin === store.loginPin;
+        }
+        if (!valid) throw new TRPCError({ code: "UNAUTHORIZED", message: "口令不正确" });
+        const scope = input.role === "store" ? input.storeName : input.role;
+        const openId = `pin_${createHash("sha256").update(`${input.role}:${scope}:${input.name}`).digest("hex").slice(0, 48)}`;
+        await upsertUser({ openId, name: input.name, loginMethod: "pin", role: input.role, storeName: input.role === "store" ? input.storeName : null, lastSignedIn: new Date() });
+        const token = await sdk.signSession({ openId, appId: ENV.appId, name: input.name });
+        ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: 365 * 24 * 60 * 60 * 1000 });
+        return { success: true } as const;
+      }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });

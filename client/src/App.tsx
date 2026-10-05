@@ -30,12 +30,11 @@ export default function App() {
     try { const saved = localStorage.getItem("oneira-demo-data"); return saved ? JSON.parse(saved) : demoData; } catch { return demoData; }
   });
   const [flash, setFlash] = useState("");
-  const [remoteSynced, setRemoteSynced] = useState(false);
   const realSession: Session | null = remoteMe.data ? { role: remoteMe.data.role, name: remoteMe.data.name || remoteMe.data.email || "ONEIRA 用户", storeName: remoteMe.data.storeName || undefined } : null;
   useEffect(() => { localStorage.setItem("oneira-demo-data", JSON.stringify(data)); }, [data]);
   useEffect(() => { if (session) localStorage.setItem("oneira-demo-session", JSON.stringify(session)); else localStorage.removeItem("oneira-demo-session"); }, [session]);
   useEffect(() => {
-    if (!remoteReports.data || remoteSynced) return;
+    if (!remoteReports.data) return;
     const reports: DailyReport[] = remoteReports.data.map(report => ({
       id: report.id,
       storeName: report.storeName,
@@ -55,9 +54,7 @@ export default function App() {
       updatedAt: report.updatedAt instanceof Date ? report.updatedAt.toISOString() : String(report.updatedAt),
     }));
     setData(current => ({ ...current, reports }));
-    setRemoteSynced(true);
-    showFlash("已从服务端同步日报数据");
-  }, [remoteReports.data, remoteSynced]);
+  }, [remoteReports.data]);
   const showFlash = (message: string) => { setFlash(message); window.setTimeout(() => setFlash(current => current === message ? "" : current), 2600); };
   const enter = (next: Session) => { setSession(next); setView("overview"); window.history.replaceState({}, "", next.role === "admin" ? "/admin" : next.role === "operator" ? "/operations" : "/store"); };
   const logout = async () => { if (auth.isAuthenticated) { try { await auth.logout(); } catch {} } setSession(null); setView("overview"); window.history.replaceState({}, "", "/"); };
